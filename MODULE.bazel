@@ -34,6 +34,11 @@ include("//build/deps:gen/shared_deps.MODULE.bazel")
 
 # Must be loaded after automated dependencies
 include("//build/deps:rust.MODULE.bazel")
+single_version_override(
+    module_name = "rules_rs",
+    patches = ["//:patches/rules_rust/extra_aliased_targets.patch"],
+    patch_strip = 1,
+)
 include("//build/deps:nodejs.MODULE.bazel")
 include("//build/deps:python.MODULE.bazel")
 include("//build/deps:v8.MODULE.bazel")

@@ -96,7 +96,7 @@ update-deps prefix="":
 
 # equivalent to `cargo update`; use `workspace` or <package> to limit update scope
 update-rust package="full":
-  bazel run //deps/rust:crates_vendor -- --repin {{package}}
+  cd deps/rust && bazel run @rules_rust//tools/upstream_wrapper:cargo -- update
 
 # example: just bench mimetype
 bench path:
