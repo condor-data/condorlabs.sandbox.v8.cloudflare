@@ -209,6 +209,68 @@ ContainerClient::~ContainerClient() noexcept(false) {
   cleanupCallback(kj::joinPromises(kj::arr(kj::mv(sidecarCleanup), kj::mv(mainCleanup))));
 }
 
+class ContainerClient::ConnectionActivity final {
+ public:
+  explicit ConnectionActivity(ContainerClient& containerClient)
+      : containerClient(containerClient) {
+    ++containerClient.activeConnectionCount;
+    containerClient.invalidateSleepAfter();
+  }
+
+  ~ConnectionActivity() noexcept(false) {
+    KJ_REQUIRE(containerClient.activeConnectionCount > 0);
+    --containerClient.activeConnectionCount;
+    containerClient.maybeScheduleSleepAfter();
+  }
+
+ private:
+  ContainerClient& containerClient;
+};
+
+kj::Own<void> ContainerClient::addActiveConnection() {
+  return kj::heap<ConnectionActivity>(*this);
+}
+
+void ContainerClient::invalidateSleepAfter() {
+  ++sleepAfterGeneration;
+}
+
+void ContainerClient::maybeScheduleSleepAfter() {
+  KJ_IF_SOME(timeout, sleepAfterTimeout) {
+    if (activeConnectionCount == 0 && containerStarted.load(std::memory_order_acquire)) {
+      auto generation = ++sleepAfterGeneration;
+      waitUntilTasks.add(destroyAfterSleepAfter(timeout, generation).attach(addRef()));
+    }
+  }
+}
+
+kj::Promise<void> ContainerClient::destroyAfterSleepAfter(
+    kj::Duration timeout, uint64_t generation) {
+  co_await timer.afterDelay(timeout);
+
+  if (generation != sleepAfterGeneration || activeConnectionCount != 0 ||
+      !containerStarted.load(std::memory_order_acquire)) {
+    co_return;
+  }
+
+  auto [ready, done] = getRpcTurn();
+  co_await ready;
+  KJ_DEFER(done->fulfill());
+
+  if (generation != sleepAfterGeneration || activeConnectionCount != 0 ||
+      !containerStarted.load(std::memory_order_acquire)) {
+    co_return;
+  }
+
+  invalidateSleepAfter();
+  sidecarIngressHostPort = kj::none;
+  containerStarted.store(false, std::memory_order_release);
+  containerSidecarStarted.store(false, std::memory_order_release);
+
+  co_await destroyContainer();
+  co_await destroySidecarContainer();
+}
+
 // Docker-specific Port implementation that implements rpc::Container::Port::Server
 // It does a HTTP CONNECT to the proxy-everything sidecar port.
 class ContainerClient::DockerPort final: public rpc::Container::Port::Server {
@@ -221,6 +283,7 @@ class ContainerClient::DockerPort final: public rpc::Container::Port::Server {
   kj::Promise<void> connect(ConnectContext context) override {
     auto mappedPort = JSG_REQUIRE_NONNULL(containerClient.sidecarIngressHostPort, Error,
         "connect(): Container ingress proxy is not running.");
+    auto connectionActivity = containerClient.addActiveConnection();
 
     auto dstAddr = kj::str(containerHost, ":", containerPort);
 
@@ -264,7 +327,8 @@ class ContainerClient::DockerPort final: public rpc::Container::Port::Server {
     pumpTask =
         kj::joinPromisesFailFast(kj::arr(upEnd->pumpTo(*connection), connection->pumpTo(*downEnd)))
             .ignoreResult()
-            .attach(kj::mv(httpClient), kj::mv(upEnd), kj::mv(connection), kj::mv(downEnd));
+            .attach(kj::mv(httpClient), kj::mv(upEnd), kj::mv(connection), kj::mv(downEnd),
+                kj::mv(connectionActivity));
     co_return;
   }
 
@@ -909,7 +973,14 @@ kj::Promise<void> ContainerClient::start(StartContext context) {
   co_await createContainer(entrypoint, environment, params);
   co_await startContainer();
 
+  invalidateSleepAfter();
+  sleepAfterTimeout = kj::none;
+  if (params.getSleepAfterMs() > 0) {
+    sleepAfterTimeout = params.getSleepAfterMs() * kj::MILLISECONDS;
+  }
+
   containerStarted.store(true, std::memory_order_release);
+  maybeScheduleSleepAfter();
 }
 
 kj::Promise<void> ContainerClient::monitor(MonitorContext context) {
@@ -918,7 +989,10 @@ kj::Promise<void> ContainerClient::monitor(MonitorContext context) {
   co_await mutationQueue.addBranch();
 
   auto results = context.getResults();
-  KJ_DEFER(containerStarted.store(false, std::memory_order_release));
+  KJ_DEFER({
+    invalidateSleepAfter();
+    containerStarted.store(false, std::memory_order_release);
+  });
 
   auto endpoint = kj::str("/containers/", containerName, "/wait");
   auto response = co_await dockerApiRequest(
@@ -937,9 +1011,12 @@ kj::Promise<void> ContainerClient::destroy(DestroyContext context) {
   co_await ready;
   KJ_DEFER(done->fulfill());
 
+  invalidateSleepAfter();
   this->sidecarIngressHostPort = kj::none;
   co_await destroyContainer();
   co_await destroySidecarContainer();
+  containerStarted.store(false, std::memory_order_release);
+  containerSidecarStarted.store(false, std::memory_order_release);
 }
 
 kj::Promise<void> ContainerClient::signal(SignalContext context) {

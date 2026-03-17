@@ -54,6 +54,11 @@ void Container::start(jsg::Lock& js, jsg::Optional<StartupOptions> maybeOptions)
       JSG_REQUIRE(hardTimeoutMs > 0, RangeError, "Hard timeout must be greater than 0");
       req.setHardTimeoutMs(hardTimeoutMs);
     }
+
+    KJ_IF_SOME(sleepAfterMs, options.sleepAfter) {
+      JSG_REQUIRE(sleepAfterMs > 0, RangeError, "Sleep-after timeout must be greater than 0");
+      req.setSleepAfterMs(sleepAfterMs);
+    }
   }
 
   req.setCompatibilityFlags(flags);

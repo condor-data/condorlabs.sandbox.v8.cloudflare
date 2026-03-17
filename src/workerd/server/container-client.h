@@ -79,6 +79,8 @@ class ContainerClient final: public rpc::Container::Server, public kj::Refcounte
   kj::Own<ContainerClient> addRef();
 
  private:
+  class ConnectionActivity;
+
   capnp::ByteStreamFactory& byteStreamFactory;
   kj::HttpHeaderTable headerTable;
   kj::Timer& timer;
@@ -154,6 +156,11 @@ class ContainerClient final: public rpc::Container::Server, public kj::Refcounte
   kj::Promise<void> destroySidecarContainer();
   kj::Promise<void> monitorSidecarContainer();
 
+  kj::Own<void> addActiveConnection();
+  void invalidateSleepAfter();
+  void maybeScheduleSleepAfter();
+  kj::Promise<void> destroyAfterSleepAfter(kj::Duration timeout, uint64_t generation);
+
   // Cleanup callback invoked from the destructor. Receives the joined cleanup promise so
   // ActorNamespace can wrap it with the canceler, store it for the next ContainerClient
   // to await, and add a branch to waitUntilTasks to keep the cleanup tasks alive.
@@ -192,6 +199,9 @@ class ContainerClient final: public rpc::Container::Server, public kj::Refcounte
 
   uint16_t egressListenerPort = 0;
   kj::Maybe<uint16_t> sidecarIngressHostPort;
+  kj::Maybe<kj::Duration> sleepAfterTimeout;
+  uint64_t sleepAfterGeneration = 0;
+  uint32_t activeConnectionCount = 0;
 
   // All mutating RPCs need to ask and wait on an RpcTurn before doing any mutations.
   // monitor() is an exception. It waits for all pending mutating RPCs without joining

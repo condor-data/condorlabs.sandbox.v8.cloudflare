@@ -44,6 +44,11 @@ interface Container @0x9aaceefc06523bca {
 
     compatibilityFlags @4 :CompatibilityFlags;
     # Compatibility flags for this worker
+
+    sleepAfterMs @5: Int64;
+    # Configures a duration that the container runtime can use to stop the container after
+    # a lack of activity.
+    # Activity is defined as active connections to the container, or an RPC call like signal.
   }
 
   monitor @2 () -> (exitCode: Int32);

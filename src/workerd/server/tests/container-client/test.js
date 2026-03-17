@@ -124,6 +124,61 @@ export class DurableObjectExample extends DurableObject {
     }
   }
 
+  async testSleepAfter(timeout) {
+    const container = this.ctx.container;
+    if (container.running) {
+      let monitor = container.monitor().catch((_err) => {});
+      await container.destroy();
+      await monitor;
+    }
+    assert.strictEqual(container.running, false);
+
+    container.start({
+      env: { WS_ENABLED: 'true' },
+      sleepAfter: timeout,
+    });
+    container.monitor().catch((_err) => {});
+
+    await this.waitUntilContainerIsHealthy();
+
+    const res = await container.getTcpPort(8080).fetch('http://foo/ws', {
+      headers: {
+        Upgrade: 'websocket',
+        Connection: 'Upgrade',
+        'Sec-WebSocket-Key': 'x3JJHMbDL1EzLkh9GBhXDw==',
+        'Sec-WebSocket-Version': '13',
+      },
+      signal: AbortSignal.timeout(DEFAULT_TIMEOUT_DURATION),
+    });
+
+    assert.strictEqual(res.status, 101);
+    assert.strictEqual(!!res.webSocket, true);
+
+    const ws = res.webSocket;
+    ws.accept();
+
+    const messagePromise = new Promise((resolve) => {
+      ws.addEventListener(
+        'message',
+        (event) => {
+          resolve(event.data);
+        },
+        { once: true }
+      );
+    });
+
+    const closePromise = new Promise((resolve) => {
+      ws.addEventListener('close', resolve, { once: true });
+    });
+
+    await scheduler.wait(timeout * 2);
+    ws.send('still awake');
+    assert.strictEqual(await messagePromise, 'Echo: still awake');
+
+    ws.close();
+    await closePromise;
+  }
+
   async start() {
     assert.strictEqual(this.ctx.container.running, false);
     this.ctx.container.start();
@@ -765,6 +820,29 @@ export const testSetInactivityTimeout = {
 
       // Container should still be running after DO exited
       await stub.expectRunning(true);
+    }
+  },
+};
+
+export const testSleepAfter = {
+  async test(_ctrl, env) {
+    const name = getRandomDurableObjectName('testSleepAfter');
+
+    {
+      const stub = env.MY_CONTAINER.getByName(name);
+      await stub.testSleepAfter(200);
+
+      await assert.rejects(() => stub.abort(), {
+        name: 'Error',
+        message: 'Application called abort() to reset Durable Object.',
+      });
+    }
+
+    await scheduler.wait(500);
+
+    {
+      const stub = env.MY_CONTAINER.getByName(name);
+      await stub.expectRunning(false);
     }
   },
 };
