@@ -3,14 +3,11 @@
 //     https://opensource.org/licenses/Apache-2.0
 
 import { RpcTarget } from 'cloudflare:workers';
-import * as assert from 'node:assert';
+import assert from 'node:assert';
 
 // Mock step that records calls for verification.
 class MockStep extends RpcTarget {
-  constructor() {
-    super();
-    this.calls = [];
-  }
+  calls = [];
 
   async do(...args) {
     const name = args[0];
@@ -60,10 +57,7 @@ class MockStep extends RpcTarget {
 
 // Mock step that invokes the rollback fn, simulating engine compensation.
 class RollbackCallingMockStep extends RpcTarget {
-  constructor() {
-    super();
-    this.rollbackResult = null;
-  }
+  rollbackResult = null;
 
   async do(...args) {
     const name = args[0];

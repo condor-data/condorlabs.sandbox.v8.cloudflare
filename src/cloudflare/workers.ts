@@ -67,11 +67,7 @@ class StepPromise {
     if (typeof configOrFn === 'function') {
       // rollback(fn)
       this.#rollbackFn = configOrFn;
-    } else if (
-      configOrFn !== null &&
-      configOrFn !== undefined &&
-      typeof configOrFn === 'object'
-    ) {
+    } else if (configOrFn != null && typeof configOrFn === 'object') {
       // rollback(config, fn)
       if (typeof maybeFn !== 'function') {
         throw new TypeError(
@@ -92,8 +88,11 @@ class StepPromise {
   #getPromise(): Promise<unknown> {
     if (!this.#promise) {
       this.#launched = true;
-      // #execute is non-null here because #promise is only set in this block.
-      this.#promise = this.#execute!(this.#rollbackFn, this.#rollbackConfig);
+      const execute = this.#execute;
+      if (execute === null) {
+        throw new Error('StepPromise execute function is missing');
+      }
+      this.#promise = execute(this.#rollbackFn, this.#rollbackConfig);
       // Allow GC of the closure and rollback references now that the RPC has been dispatched.
       this.#execute = null;
       this.#rollbackFn = null;
