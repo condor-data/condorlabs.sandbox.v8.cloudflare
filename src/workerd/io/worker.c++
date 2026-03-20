@@ -1803,6 +1803,13 @@ kj::Maybe<jsg::JsObject> tryResolveMainModule(jsg::Lock& js,
         Error, "Failed to initialize node-internal:internal_timers_global_override module");
   }
 
+  // Register OpenTelemetry API providers on the well-known global symbol so that
+  // `import { trace } from '@opentelemetry/api'` discovers workerd's implementations.
+  // This must run before any user code.
+  // TODO(otel): Gate behind a compat flag before shipping.
+  JSG_REQUIRE_NONNULL(js.resolveInternalModule("cloudflare-internal:otel-bootstrap"),
+      Error, "Failed to initialize OpenTelemetry builtin providers");
+
   return js.resolveModule(mainModule.toString(false), jsg::RequireEsm::YES);
 }
 }  // anonymous namespace
