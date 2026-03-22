@@ -570,12 +570,14 @@ SqliteObserver SqliteObserver::DEFAULT = SqliteObserver{};
 SqliteDatabase::SqliteDatabase(const Vfs& vfs,
     kj::Path path,
     kj::Maybe<kj::WriteMode> maybeMode,
+    size_t sqliteMaxMemoryBytes,
     SqliteObserver& sqliteObserver,
     kj::Maybe<const ActorAccountLimits&> actorAccountLimits)
     : vfs(vfs),
       path(kj::mv(path)),
       readOnly(maybeMode == kj::none),
       sqliteObserver(sqliteObserver),
+      sqliteMaxMemoryBytes(sqliteMaxMemoryBytes),
       actorAccountLimits(actorAccountLimits) {
   init(maybeMode);
 }
@@ -583,6 +585,8 @@ SqliteDatabase::SqliteDatabase(const Vfs& vfs,
 void SqliteDatabase::init(kj::Maybe<kj::WriteMode> maybeMode) {
   KJ_ASSERT(maybeDb == kj::none);
   sqlite3* db = nullptr;
+
+  auto memoryScope = enterMemoryScope();
 
   KJ_IF_SOME(mode, maybeMode) {
     int flags = SQLITE_OPEN_READWRITE;
@@ -628,6 +632,8 @@ void SqliteDatabase::init(kj::Maybe<kj::WriteMode> maybeMode) {
 SqliteDatabase::~SqliteDatabase() noexcept(false) {
   sqlite3* db = &KJ_UNWRAP_OR(maybeDb, return);
 
+  auto memoryScope = enterMemoryScope();
+
   auto err = sqlite3_close(db);
   if (err == SQLITE_BUSY) {
     KJ_LOG(ERROR, "sqlite database destroyed while dependent objects still exist");
@@ -643,6 +649,10 @@ SqliteDatabase::~SqliteDatabase() noexcept(false) {
 
 SqliteDatabase::operator sqlite3*() {
   return &KJ_ASSERT_NONNULL(maybeDb, "previous reset() failed");
+}
+
+SqliteMemoryScope SqliteDatabase::enterMemoryScope() {
+  return SqliteMemoryScope(sqliteMemoryBytes, sqliteMaxMemoryBytes);
 }
 
 bool SqliteDatabase::observedCriticalError() {
@@ -807,6 +817,8 @@ SqliteDatabase::StatementAndEffect SqliteDatabase::prepareSql(const Regulator& r
     }
   });
 
+  auto memoryScope = enterMemoryScope();
+
   for (;;) {
     sqlite3_stmt* result;
     const char* tail;
@@ -965,6 +977,8 @@ void SqliteDatabase::executeWithRegulator(
 
   currentRegulator = regulator;
   KJ_DEFER(currentRegulator = kj::none);
+
+  auto memoryScope = enterMemoryScope();
   func();
 }
 
@@ -974,6 +988,8 @@ void SqliteDatabase::reset() {
   // If transactions are open during reset(), whatever had the transaction open is going to get
   // confused at best, or lose data at worst. Let's just not allow this.
   KJ_REQUIRE(!inTransaction && savepoints.empty(), "can't reset() a database during a transaction");
+
+  auto memoryScope = enterMemoryScope();
 
   // Temporarily disable the on-write callback while resetting.
   auto writeCb = kj::mv(onWriteCallback);
@@ -1437,6 +1453,14 @@ void SqliteDatabase::Statement::beforeSqliteReset() {
   }
 }
 
+SqliteDatabase::Statement::~Statement() noexcept(false) {
+  // Install memory scope for sqlite3_finalize called when stmt (containing StatementAndEffect
+  // with kj::Own<sqlite3_stmt>) is destroyed. Also covers prelude destruction.
+  auto memoryScope = db.enterMemoryScope();
+  auto stmtToDestroy = kj::mv(stmt);
+  auto preludeToDestroy = kj::mv(prelude);
+}
+
 SqliteDatabase::Query::Query(SqliteDatabase& db,
     QueryOptions options,
     Statement& statement,
@@ -1469,8 +1493,13 @@ SqliteDatabase::Query::~Query() noexcept(false) {
 }
 
 void SqliteDatabase::Query::destroy() {
+  // Install memory scope for sqlite3_reset, sqlite3_clear_bindings, and sqlite3_finalize (via
+  // ownStatement destruction). The scope is idempotent, so this is safe even if a scope is already
+  // active from the caller.
+  auto memoryScope = db.enterMemoryScope();
+
   if (regulator.shouldAddQueryStats()) {
-    //Update the db stats that we have collected for the query
+    // Update the db stats that we have collected for the query.
     db.sqliteObserver.addQueryStats(rowsRead, rowsWritten);
   }
 
@@ -1486,9 +1515,14 @@ void SqliteDatabase::Query::destroy() {
         errorDescription.slice(0, kj::min(RA_MAX_METRICS_QUERY_SIZE, errorDescription.size()))));
   }
 
+  // Move ownStatement to a local variable so that it goes out of scope while memoryScope is still
+  // active. ownStatement is used by getStatementAndEffect(), so we cannot move it until this
+  // point.
+  auto ownStatementToDestroy = kj::mv(ownStatement);
+
   // We only need to reset the statement if we don't own it. If we own it, it's about to be
   // destroyed anyway.
-  if (ownStatement.statement.get() == nullptr) {
+  if (ownStatementToDestroy.statement.get() == nullptr) {
     KJ_IF_SOME(statement, maybeStatement) {
       // The error code returned by sqlite3_reset() actually represents the last error encountered
       // when stepping the statement. This doesn't mean that the reset failed.
@@ -1570,26 +1604,31 @@ uint64_t SqliteDatabase::Query::getRowsWritten() {
 }
 
 void SqliteDatabase::Query::bind(uint i, kj::ArrayPtr<const byte> value) {
+  auto memoryScope = db.enterMemoryScope();
   sqlite3_stmt* statement = getStatement();
   SQLITE_CALL(sqlite3_bind_blob(statement, i + 1, value.begin(), value.size(), SQLITE_STATIC));
 }
 
 void SqliteDatabase::Query::bind(uint i, kj::StringPtr value) {
+  auto memoryScope = db.enterMemoryScope();
   sqlite3_stmt* statement = getStatement();
   SQLITE_CALL(sqlite3_bind_text(statement, i + 1, value.begin(), value.size(), SQLITE_STATIC));
 }
 
 void SqliteDatabase::Query::bind(uint i, long long value) {
+  auto memoryScope = db.enterMemoryScope();
   sqlite3_stmt* statement = getStatement();
   SQLITE_CALL(sqlite3_bind_int64(statement, i + 1, value));
 }
 
 void SqliteDatabase::Query::bind(uint i, double value) {
+  auto memoryScope = db.enterMemoryScope();
   sqlite3_stmt* statement = getStatement();
   SQLITE_CALL(sqlite3_bind_double(statement, i + 1, value));
 }
 
 void SqliteDatabase::Query::bind(uint i, decltype(nullptr)) {
+  auto memoryScope = db.enterMemoryScope();
   sqlite3_stmt* statement = getStatement();
   SQLITE_CALL(sqlite3_bind_null(statement, i + 1));
 }
@@ -1607,6 +1646,7 @@ void SqliteDatabase::Query::nextRow(bool first) {
   KJ_DEFER(db.currentRegulator = kj::none);
   db.currentRegulator = regulator;
 
+  auto memoryScope = db.enterMemoryScope();
   SQLITE_CALL_SCOPE {
     int err = sqlite3_step(statement);
     queryEvent.setQueryResult(err);
@@ -1637,11 +1677,13 @@ uint SqliteDatabase::Query::changeCount() {
 }
 
 uint SqliteDatabase::Query::columnCount() {
+  auto memoryScope = db.enterMemoryScope();
   sqlite3_stmt* statement = getStatement();
   return sqlite3_column_count(statement);
 }
 
 SqliteDatabase::Query::ValuePtr SqliteDatabase::Query::getValue(uint column) {
+  auto memoryScope = db.enterMemoryScope();
   sqlite3_stmt* statement = getStatement();
   switch (sqlite3_column_type(statement, column)) {
     case SQLITE_INTEGER:
@@ -1659,38 +1701,45 @@ SqliteDatabase::Query::ValuePtr SqliteDatabase::Query::getValue(uint column) {
 }
 
 kj::StringPtr SqliteDatabase::Query::getColumnName(uint column) {
+  auto memoryScope = db.enterMemoryScope();
   sqlite3_stmt* statement = getStatement();
   return sqlite3_column_name(statement, column);
 }
 
 kj::ArrayPtr<const byte> SqliteDatabase::Query::getBlob(uint column) {
+  auto memoryScope = db.enterMemoryScope();
   sqlite3_stmt* statement = getStatement();
   const byte* ptr = reinterpret_cast<const byte*>(sqlite3_column_blob(statement, column));
   return kj::arrayPtr(ptr, sqlite3_column_bytes(statement, column));
 }
 
 kj::StringPtr SqliteDatabase::Query::getText(uint column) {
+  auto memoryScope = db.enterMemoryScope();
   sqlite3_stmt* statement = getStatement();
   const char* ptr = reinterpret_cast<const char*>(sqlite3_column_text(statement, column));
   return kj::StringPtr(ptr, sqlite3_column_bytes(statement, column));
 }
 
 int SqliteDatabase::Query::getInt(uint column) {
+  auto memoryScope = db.enterMemoryScope();
   sqlite3_stmt* statement = getStatement();
   return sqlite3_column_int(statement, column);
 }
 
 int64_t SqliteDatabase::Query::getInt64(uint column) {
+  auto memoryScope = db.enterMemoryScope();
   sqlite3_stmt* statement = getStatement();
   return sqlite3_column_int64(statement, column);
 }
 
 double SqliteDatabase::Query::getDouble(uint column) {
+  auto memoryScope = db.enterMemoryScope();
   sqlite3_stmt* statement = getStatement();
   return sqlite3_column_double(statement, column);
 }
 
 bool SqliteDatabase::Query::isNull(uint column) {
+  auto memoryScope = db.enterMemoryScope();
   sqlite3_stmt* statement = getStatement();
   return sqlite3_column_type(statement, column) == SQLITE_NULL;
 }
