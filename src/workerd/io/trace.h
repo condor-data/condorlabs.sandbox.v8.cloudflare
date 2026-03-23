@@ -1202,6 +1202,11 @@ class TraceContext {
   SpanParent getInternalSpanParent() {
     return SpanParent(span);
   }
+  // Returns a SpanParent for the user-facing span, suitable for storing in the async context
+  // frame so that nested spans automatically use the correct parent.
+  SpanParent getUserSpanParent() {
+    return SpanParent(userSpan);
+  }
 
  private:
   SpanBuilder span;

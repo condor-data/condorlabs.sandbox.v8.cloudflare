@@ -1048,7 +1048,7 @@ kj::Own<CacheClient> IoContext::getCacheClient() {
   return kj::mv(ret);
 }
 
-jsg::AsyncContextFrame::StorageScope IoContext::makeAsyncTraceScope(
+IoContext::TraceScope IoContext::makeAsyncTraceScope(
     Worker::Lock& lock, kj::Maybe<SpanParent> spanParentOverride) {
   static const SpanParent dummySpanParent = nullptr;
 
@@ -1070,8 +1070,23 @@ jsg::AsyncContextFrame::StorageScope IoContext::makeAsyncTraceScope(
   }
   auto ioOwnSpanParent = IoContext::current().addObject(kj::mv(spanParent));
   auto spanHandle = jsg::wrapOpaque(js.v8Context(), kj::mv(ioOwnSpanParent));
-  return jsg::AsyncContextFrame::StorageScope(
+  // StorageScope is non-movable; allocate on the heap via kj::heap so kj::Own is movable.
+  // internalScope is the outer scope — pushed first, so it must be destroyed last.
+  auto internalScope = kj::heap<jsg::AsyncContextFrame::StorageScope>(
       js, lock.getTraceAsyncContextKey(), js.v8Ref(spanHandle));
+
+  // Seed the user-facing SpanParent into the async context frame. This is the root user span
+  // for the request (from IncomingRequest.currentUserTraceSpan). Once seeded here, any nested
+  // startActiveSpan() call can update the frame via enterContext() so that subsequent
+  // makeUserTraceSpan() calls pick up the correct parent automatically.
+  // userScope is the inner scope — pushed second, so it must be destroyed first.
+  SpanParent userSpan = getCurrentUserTraceSpan();
+  auto ioOwnUserSpan = IoContext::current().addObject(kj::heap(kj::mv(userSpan)));
+  auto userSpanHandle = jsg::wrapOpaque(js.v8Context(), kj::mv(ioOwnUserSpan));
+  auto userScope = kj::heap<jsg::AsyncContextFrame::StorageScope>(
+      js, lock.getUserTraceAsyncContextKey(), js.v8Ref(userSpanHandle));
+
+  return TraceScope{kj::mv(internalScope), kj::mv(userScope)};
 }
 
 SpanParent IoContext::getCurrentTraceSpan() {
@@ -1093,6 +1108,22 @@ SpanParent IoContext::getCurrentTraceSpan() {
 }
 
 SpanParent IoContext::getCurrentUserTraceSpan() {
+  // If called while the JS lock is held, try to use the user trace span stored in the async
+  // context frame.  This allows startActiveSpan() to push a new span into the frame so that
+  // subsequent makeUserTraceSpan() calls automatically nest correctly.
+  KJ_IF_SOME(lock, currentLock) {
+    KJ_IF_SOME(frame, jsg::AsyncContextFrame::current(lock)) {
+      KJ_IF_SOME(value, frame.get(lock.getUserTraceAsyncContextKey())) {
+        auto handle = value.getHandle(lock);
+        jsg::Lock& js = lock;
+        auto& spanParent = jsg::unwrapOpaqueRef<IoOwn<SpanParent>>(js.v8Isolate, handle);
+        return spanParent->addRef();
+      }
+    }
+  }
+
+  // Fall back to the flat IncomingRequest-level span when the async context is unavailable
+  // (e.g. at startup, or when no JS lock is held).
   if (incomingRequests.empty()) {
     return SpanParent(nullptr);
   } else {

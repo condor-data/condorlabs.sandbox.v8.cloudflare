@@ -652,7 +652,7 @@ kj::Promise<void> sendTracesToExportedHandler(kj::Own<IoContext::IncomingRequest
     co_await context.run(
         [&context, nonEmptyTraces = nonEmptyTraces.asPtr(), entrypointName = kj::mv(entrypointName),
             versionInfo = kj::mv(versionInfo), props = kj::mv(props)](Worker::Lock& lock) mutable {
-      jsg::AsyncContextFrame::StorageScope traceScope = context.makeAsyncTraceScope(lock);
+      auto traceScope = context.makeAsyncTraceScope(lock);
 
       auto handler = lock.getExportedHandler(
           entrypointName, kj::mv(versionInfo), kj::mv(props), context.getActor());

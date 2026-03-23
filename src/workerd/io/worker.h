@@ -576,6 +576,14 @@ class Worker::Isolate: public kj::AtomicRefcounted {
 
   size_t nextRequestId = 0;
   kj::Own<jsg::AsyncContextFrame::StorageKey> traceAsyncContextKey;
+  // Stores the current user-facing SpanParent in the async context frame so that
+  // user spans nest correctly under startActiveSpan() without needing to thread
+  // parent references manually through every call site.
+  kj::Own<jsg::AsyncContextFrame::StorageKey> userTraceAsyncContextKey;
+  // Stores the current OTel Context JS object (an immutable key-value bag) in the
+  // async context frame.  The TypeScript ContextManager reads/writes this key so
+  // that context.with() propagates across await automatically.
+  kj::Own<jsg::AsyncContextFrame::StorageKey> otelContextAsyncContextKey;
 
   friend class Worker;
 };
@@ -772,6 +780,10 @@ class Worker::Lock {
 
   // Get the opaque storage key to use for recording trace information in async contexts.
   jsg::AsyncContextFrame::StorageKey& getTraceAsyncContextKey();
+  // Get the storage key for the current user-facing SpanParent in the async context frame.
+  jsg::AsyncContextFrame::StorageKey& getUserTraceAsyncContextKey();
+  // Get the storage key for the current OTel Context JS object in the async context frame.
+  jsg::AsyncContextFrame::StorageKey& getOtelContextAsyncContextKey();
 
  private:
   explicit Lock(const Worker& worker, LockType lockType, jsg::V8StackScope&);
