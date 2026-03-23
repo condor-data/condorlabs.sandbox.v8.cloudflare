@@ -1508,4 +1508,13 @@ struct CompatibilityFlags @0x8f8c1b68151b6cef {
     $compatDisableFlag("resizable_array_buffer_in_blob");
   # When enabled, creating a Blob with a resizable ArrayBuffer will throw a TypeError, matching
   # expected spec behavior.
+
+  workflowsStepRollback @174 :Bool
+    $compatEnableFlag("workflows_step_rollback")
+    $experimental;
+  # When enabled, WorkflowEntrypoint wraps the step object so that step.do()
+  # and step.waitForEvent() return a StepPromise with a .rollback() method.
+  # The rollback function is bundled into the RPC call for the engine to invoke
+  # as a compensation action on failure. Without this flag, the step object is
+  # passed through unwrapped and .rollback() is not available.
 }
