@@ -15,7 +15,7 @@ const testWorker :Workerd.Worker = (
   modules = [
     (name = "worker", esModule = embed "workflows-step-promise-test.js"),
   ],
-  compatibilityFlags = ["nodejs_compat", "experimental"],
+  compatibilityFlags = ["nodejs_compat", "experimental", "workflows_step_rollback"],
   bindings = [
     (name = "ForwardingWorkflow", service = (name = "workflows", entrypoint = "ForwardingWorkflow")),
     (name = "ErrorGuardsWorkflow", service = (name = "workflows", entrypoint = "ErrorGuardsWorkflow")),
@@ -28,5 +28,5 @@ const workflowsWorker :Workerd.Worker = (
   modules = [
     (name = "worker", esModule = embed "workflows-step-promise-workflows.js"),
   ],
-  compatibilityFlags = ["nodejs_compat", "experimental"],
+  compatibilityFlags = ["nodejs_compat", "experimental", "workflows_step_rollback"],
 );

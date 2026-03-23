@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Cloudflare, Inc.
+// Copyright (c) 2026 Cloudflare, Inc.
 // Licensed under the Apache 2.0 license found in the LICENSE file or at:
 //     https://opensource.org/licenses/Apache-2.0
 
@@ -56,8 +56,9 @@ class MockStep extends RpcTarget {
 }
 
 // Mock step that invokes the rollback fn, simulating engine compensation.
+// Captures the args passed to the rollback fn so the test can verify them.
 class RollbackCallingMockStep extends RpcTarget {
-  rollbackResult = null;
+  rollbackArgs = null;
 
   async do(...args) {
     const name = args[0];
@@ -65,12 +66,14 @@ class RollbackCallingMockStep extends RpcTarget {
     const rollbackFn =
       typeof args[1] === 'function' ? args[2] || null : args[3] || null;
     const result = await callback();
-    if (rollbackFn) {
-      this.rollbackResult = await rollbackFn({
+    if (rollbackFn !== null) {
+      const ctx = {
         error: 'simulated-error',
         output: result,
         stepName: name,
-      });
+      };
+      await rollbackFn(ctx);
+      this.rollbackArgs = ctx;
     }
     return result;
   }
@@ -161,8 +164,8 @@ export const rollbackCallable = {
       mock
     );
     assert.strictEqual(result.value, 'step-output');
-    assert.strictEqual(mock.rollbackResult.receivedOutput, 'step-output');
-    assert.strictEqual(mock.rollbackResult.receivedStepName, 'my-step');
-    assert.strictEqual(mock.rollbackResult.receivedError, 'simulated-error');
+    assert.strictEqual(mock.rollbackArgs.output, 'step-output');
+    assert.strictEqual(mock.rollbackArgs.stepName, 'my-step');
+    assert.strictEqual(mock.rollbackArgs.error, 'simulated-error');
   },
 };

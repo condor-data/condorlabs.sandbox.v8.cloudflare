@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Cloudflare, Inc.
+// Copyright (c) 2026 Cloudflare, Inc.
 // Licensed under the Apache 2.0 license found in the LICENSE file or at:
 //     https://opensource.org/licenses/Apache-2.0
 
@@ -83,17 +83,15 @@ export class ErrorPropagationWorkflow extends WorkflowEntrypoint {
   }
 }
 
-// Rollback fn callable over RPC — mock invokes it, verifies round-trip
+// Rollback fn callable over RPC — mock invokes it, verifies round-trip.
+// The rollback fn returns void (per the contract); the mock captures args separately.
 export class RollbackCallableWorkflow extends WorkflowEntrypoint {
   async run(event, step) {
     const value = await step
       .do('my-step', async () => 'step-output')
       .rollback(async ({ error, output, stepName }) => {
-        return {
-          receivedError: error,
-          receivedOutput: output,
-          receivedStepName: stepName,
-        };
+        // Rollback is a side-effect — nothing to return.
+        // The mock captures error/output/stepName from the args it passes in.
       });
     return { value };
   }
