@@ -55,7 +55,5 @@ export const validateSpans = {
     assert.strictEqual(bulkSpan['bulk.string'], 'value');
     assert.strictEqual(bulkSpan['bulk.number'], 123);
     assert.strictEqual(bulkSpan['bulk.bool'], false);
-
-    console.log('All OTel instrumentation tests passed!');
   },
 };
