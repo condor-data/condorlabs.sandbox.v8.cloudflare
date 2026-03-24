@@ -27,9 +27,9 @@ class JsSpan: public jsg::Object {
   void setAttribute(
       jsg::Lock& js, kj::String key, jsg::Optional<kj::OneOf<bool, double, kj::String>> value);
 
-  // Returns a SpanParent for the user-facing span of this JsSpan.
-  // Used by TracingModule::enterContext() to push the span into the async context frame.
-  // Returns nullptr (no-op) if the span has already ended.
+  // Returns a SpanParent for this span, for use by TracingModule::enterContext() when
+  // pushing it into the async context frame.  Returns a no-op nullptr parent if the
+  // span has already ended.
   SpanParent getUserSpanParent();
 
   JSG_RESOURCE_TYPE(JsSpan) {
