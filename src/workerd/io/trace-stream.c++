@@ -427,6 +427,7 @@ jsg::JsValue ToJs(jsg::Lock& js, const Onset& onset, StringCache& cache) {
         js.arr(onset.attributes.asPtr(),
             [&cache](jsg::Lock& js, const auto& attr) { return ToJs(js, attr, cache); }));
   }
+  obj.set(js, SPANKIND_STR, cache.get(js, spanKindToString(onset.spanKind)));
 
   return obj;
 }

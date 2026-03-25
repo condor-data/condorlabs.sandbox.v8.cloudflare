@@ -105,6 +105,7 @@ interface Onset {
                  ScheduledEventInfo | AlarmEventInfo | QueueEventInfo |
                  EmailEventInfo | TraceEventInfo |
                  HibernatableWebSocketEventInfo | CustomEventInfo;
+  readonly spanKind: SpanKind;
 }
 
 interface Outcome {
