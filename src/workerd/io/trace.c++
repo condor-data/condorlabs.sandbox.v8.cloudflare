@@ -309,10 +309,6 @@ void SpanContext::toCapnp(rpc::SpanContext::Builder writer) const {
   }
 }
 
-SpanContext SpanContext::clone() const {
-  return SpanContext(traceId, spanId);
-}
-
 kj::Maybe<SpanContext> SpanContext::tryFromTraceparent(kj::StringPtr tp) {
   // The W3C Trace Context traceparent header has a fixed-length format:
   // {version:2}-{trace-id:32}-{parent-id:16}-{flags:2}

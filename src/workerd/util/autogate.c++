@@ -37,6 +37,8 @@ kj::StringPtr KJ_STRINGIFY(AutogateKey key) {
       return "enable-draining-read-on-standard-streams"_kj;
     case AutogateKey::SQL_RESTRICT_RESERVED_NAMES:
       return "sql-restrict-reserved-names"_kj;
+    case AutogateKey::USER_SPAN_CONTEXT_PROPAGATION:
+      return "user-span-context-propagation"_kj;
     case AutogateKey::NumOfKeys:
       KJ_FAIL_ASSERT("NumOfKeys should not be used in getName");
   }

@@ -9,6 +9,7 @@
 #include <workerd/io/worker.h>
 #include <workerd/jsg/jsg.h>
 #include <workerd/jsg/setup.h>
+#include <workerd/util/autogate.h>
 #include <workerd/util/own-util.h>
 #include <workerd/util/sentry.h>
 #include <workerd/util/uncaught-exception-source.h>
@@ -1011,12 +1012,27 @@ kj::Own<WorkerInterface> IoContext::getSubrequestChannelImpl(uint channel,
   IoChannelFactory::SubrequestMetadata metadata{
     .cfBlobJson = kj::mv(cfBlobJson),
     .parentSpan = tracing.getInternalSpanParent(),
+    .userSpanContext = getUserSpanContext(tracing),
     .featureFlagsForFl = mapCopyString(worker->getIsolate().getFeatureFlagsForFl()),
   };
 
   auto client = channelFactory.startSubrequest(channel, kj::mv(metadata));
 
   return client;
+}
+
+kj::Maybe<tracing::SpanContext> IoContext::getUserSpanContext(TraceContext& tracing) {
+  if (!util::Autogate::isEnabled(util::AutogateKey::USER_SPAN_CONTEXT_PROPAGATION)) {
+    return kj::none;
+  }
+  const auto& invCtx = getInvocationSpanContext();
+  auto traceId = invCtx.getTraceId();
+  auto spanId = invCtx.getSpanId();
+  KJ_IF_SOME(observer, tracing.getUserSpanParent().getObserver()) {
+    auto& userObs = kj::downcast<UserSpanObserver>(observer);
+    spanId = userObs.getSpanId();
+  }
+  return tracing::SpanContext(traceId, spanId);
 }
 
 kj::Own<kj::HttpClient> IoContext::getHttpClient(
