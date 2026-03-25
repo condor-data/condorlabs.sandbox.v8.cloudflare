@@ -1236,6 +1236,10 @@ class TraceContext {
     return SpanParent(span);
   }
 
+  SpanParent getUserSpanParent() {
+    return SpanParent(userSpan);
+  }
+
  private:
   SpanBuilder span;
   SpanBuilder userSpan;
