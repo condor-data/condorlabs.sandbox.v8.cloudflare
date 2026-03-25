@@ -372,13 +372,50 @@ export class DurableObjectExample extends DurableObject {
     // Label name with control character
     assert.throws(
       () => container.start({ labels: { 'bad\x01name': 'value' } }),
-      { message: /Label names cannot contain control characters \(index 0\)/ }
+      { message: /Label names must contain only alphanumeric characters/ }
     );
 
-    // Label value with control character
-    assert.throws(() => container.start({ labels: { name: 'bad\x01value' } }), {
-      message: /Label values cannot contain control characters \(index 0\)/,
+    // Hyphen in label name
+    assert.throws(
+      () => container.start({ labels: { 'bad-name': 'goodvalue' } }),
+      { message: /Label names must contain only alphanumeric characters/ }
+    );
+
+    // Emoji in label name
+    assert.throws(() => container.start({ labels: { 'test🚀': 'value' } }), {
+      message: /Label names must contain only alphanumeric characters/,
     });
+
+    // Accented character in label name
+    assert.throws(() => container.start({ labels: { goodnamé: 'cafe' } }), {
+      message: /Label names must contain only alphanumeric characters/,
+    });
+
+    // Control character in label value
+    assert.throws(() => container.start({ labels: { name: 'bad\x01value' } }), {
+      message: /Label values must contain only printable ASCII characters/,
+    });
+
+    // Emoji in label value
+    assert.throws(() => container.start({ labels: { name: 'value🚀' } }), {
+      message: /Label values must contain only printable ASCII characters/,
+    });
+
+    // Valid alphanumeric names with printable ASCII values
+    container.start({
+      labels: {
+        MyLabel123: 'any-value_is.fine!',
+        abc: 'hello world',
+        TEST: 'us-east-1',
+        team: 'v1.2.3',
+      },
+    });
+
+    const monitor = container.monitor().catch((_err) => {});
+    await this.waitUntilContainerIsHealthy();
+    assert.strictEqual(container.running, true);
+    await container.destroy();
+    await monitor;
   }
 
   async testPidNamespace() {
