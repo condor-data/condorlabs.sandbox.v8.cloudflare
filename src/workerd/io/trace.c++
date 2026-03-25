@@ -309,10 +309,6 @@ void SpanContext::toCapnp(rpc::SpanContext::Builder writer) const {
   }
 }
 
-SpanContext SpanContext::clone() const {
-  return SpanContext(traceId, spanId);
-}
-
 kj::Maybe<SpanContext> SpanContext::fromTraceparent(kj::StringPtr tp) {
   // W3C traceparent: "{version}-{trace-id}-{parent-id}-{flags}"
   constexpr size_t kVersionStart = 0;
