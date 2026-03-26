@@ -22,6 +22,7 @@ type ExecuteFn = (
   rollbackFn: RollbackFn,
   rollbackConfig: RollbackConfig
 ) => Promise<unknown>;
+type RunFn = (event: unknown, step: unknown, ...rest: unknown[]) => unknown;
 
 // The step RPC stub interface — mirrors what the engine exposes via JS RPC.
 interface StepRpcStub {
@@ -196,9 +197,7 @@ function wrapStep(jsStep: StepRpcStub): WrappedStep {
 }
 
 // Wraps a run function so that its second argument (step) is replaced with wrapStep(step).
-function makeWrappedRun(
-  originalRun: (event: unknown, step: unknown, ...rest: unknown[]) => unknown
-): (event: unknown, step: unknown, ...rest: unknown[]) => unknown {
+function makeWrappedRun(originalRun: RunFn): RunFn {
   return function (
     this: unknown,
     event: unknown,
@@ -245,11 +244,7 @@ class WorkflowEntrypointWrapper extends entrypoints.WorkflowEntrypoint {
         Object.prototype.hasOwnProperty.call(proto, 'run') &&
         typeof proto.run === 'function'
       ) {
-        const originalRun = proto.run as (
-          event: unknown,
-          step: unknown,
-          ...rest: unknown[]
-        ) => unknown;
+        const originalRun = proto.run as RunFn;
         proto.run = makeWrappedRun(originalRun);
         wrappedProtos.add(proto);
         break;
@@ -265,9 +260,8 @@ class WorkflowEntrypointWrapper extends entrypoints.WorkflowEntrypoint {
   }
 }
 
-export const WorkflowEntrypoint = Cloudflare.compatibilityFlags[
-  'workflows_step_rollback'
-]
+export const WorkflowEntrypoint = Cloudflare.compatibilityFlags
+  .workflows_step_rollback
   ? WorkflowEntrypointWrapper
   : entrypoints.WorkflowEntrypoint;
 
