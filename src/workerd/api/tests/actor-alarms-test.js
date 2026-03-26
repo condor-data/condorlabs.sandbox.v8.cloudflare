@@ -37,6 +37,7 @@ export class DurableObjectExample {
 
   async fetch() {
     const time = Date.now() + 50;
+    this.scheduledTime = time;
     await this.state.storage.setAlarm(time);
     assert.equal(await this.state.storage.getAlarm(), time);
 
@@ -45,12 +46,14 @@ export class DurableObjectExample {
     return new Response('OK');
   }
 
-  async alarm() {
+  async alarm(alarmInfo) {
     try {
       let time = await this.state.storage.getAlarm();
       if (time !== null) {
         throw new Error(`time not null inside alarm handler ${time}`);
       }
+      assert.strictEqual(typeof alarmInfo.scheduledTime, 'number');
+      assert.strictEqual(alarmInfo.scheduledTime, this.scheduledTime);
       this.resolve();
     } catch (e) {
       this.reject(e);

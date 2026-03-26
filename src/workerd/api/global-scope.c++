@@ -496,7 +496,7 @@ kj::Promise<WorkerInterface::AlarmResult> ServiceWorkerGlobalScope::runAlarm(kj:
       auto& alarm = KJ_ASSERT_NONNULL(handler.alarm);
 
       return context
-          .run([exportedHandler, &context, timeout, retryCount, &alarm,
+          .run([exportedHandler, &context, timeout, retryCount, scheduledTime, &alarm,
                    maybeAsyncContext = jsg::AsyncContextFrame::currentRef(lock)](
                    Worker::Lock& lock) mutable -> kj::Promise<WorkerInterface::AlarmResult> {
         jsg::AsyncContextFrame::Scope asyncScope(lock, maybeAsyncContext);
@@ -528,7 +528,7 @@ kj::Promise<WorkerInterface::AlarmResult> ServiceWorkerGlobalScope::runAlarm(kj:
             .retry = true, .retryCountsAgainstLimit = true, .outcome = EventOutcome::EXCEEDED_CPU};
         });
 
-        return alarm(lock, js.alloc<AlarmInvocationInfo>(retryCount))
+        return alarm(lock, js.alloc<AlarmInvocationInfo>(scheduledTime, retryCount))
             .then([]() -> kj::Promise<WorkerInterface::AlarmResult> {
           return WorkerInterface::AlarmResult{.retry = false, .outcome = EventOutcome::OK};
         }).exclusiveJoin(kj::mv(timeoutPromise));

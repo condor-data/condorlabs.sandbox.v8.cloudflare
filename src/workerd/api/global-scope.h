@@ -321,7 +321,9 @@ class ExecutionContext: public jsg::Object {
 // AlarmEventInfo is a jsg::Object used to pass alarm invocation info to an alarm handler.
 class AlarmInvocationInfo: public jsg::Object {
  public:
-  AlarmInvocationInfo(uint32_t retry): retryCount(retry) {}
+  AlarmInvocationInfo(kj::Date scheduledTime, uint32_t retry)
+      : scheduledTime(static_cast<double>((scheduledTime - kj::UNIX_EPOCH) / kj::MILLISECONDS)),
+        retryCount(retry) {}
 
   bool getIsRetry() {
     return retryCount > 0;
@@ -329,13 +331,18 @@ class AlarmInvocationInfo: public jsg::Object {
   uint32_t getRetryCount() {
     return retryCount;
   }
+  double getScheduledTime() {
+    return scheduledTime;
+  }
 
   JSG_RESOURCE_TYPE(AlarmInvocationInfo) {
     JSG_READONLY_INSTANCE_PROPERTY(isRetry, getIsRetry);
     JSG_READONLY_INSTANCE_PROPERTY(retryCount, getRetryCount);
+    JSG_READONLY_INSTANCE_PROPERTY(scheduledTime, getScheduledTime);
   }
 
  private:
+  double scheduledTime;
   uint32_t retryCount = 0;
 };
 

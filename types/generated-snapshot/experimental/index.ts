@@ -582,6 +582,7 @@ export declare abstract class Navigator {
 export interface AlarmInvocationInfo {
   readonly isRetry: boolean;
   readonly retryCount: number;
+  readonly scheduledTime: number;
 }
 export interface Cloudflare {
   readonly compatibilityFlags: Record<string, boolean>;
