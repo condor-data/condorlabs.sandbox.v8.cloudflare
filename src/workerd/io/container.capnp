@@ -136,7 +136,7 @@ interface Container @0x9aaceefc06523bca {
     stdin @1 () -> (stdin :ByteStream);
     # Retrieves a ByteStream handle to write to the process's stdin.
     # If not called before wait(), stdin automatically EOFs.
-    # Throws an error if called after wait() has been called.
+    # Throws an error if called after wait().
 
     kill @2 (signo :UInt32);
     # Sends the given signal to the process.

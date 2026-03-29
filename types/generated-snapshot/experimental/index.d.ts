@@ -3933,6 +3933,28 @@ interface EventSourceEventSourceInit {
   withCredentials?: boolean;
   fetcher?: Fetcher;
 }
+interface ExecOutput {
+  readonly stdout: ArrayBuffer;
+  readonly stderr: ArrayBuffer;
+  readonly exitCode: number;
+}
+interface ContainerExecOptions {
+  stdin?: ReadableStream | "pipe";
+  stdout?: "pipe" | "ignore";
+  stderr?: "pipe" | "ignore" | "combined";
+  cwd?: string;
+  env?: Record<string, string>;
+  user?: string;
+}
+interface ExecProcess {
+  readonly stdin: WritableStream | null;
+  readonly stdout: ReadableStream | null;
+  readonly stderr: ReadableStream | null;
+  readonly pid: number;
+  readonly exitCode: Promise<number>;
+  output(): Promise<ExecOutput>;
+  kill(signal?: number): void;
+}
 interface Container {
   get running(): boolean;
   start(options?: ContainerStartupOptions): void;
@@ -3943,6 +3965,11 @@ interface Container {
   setInactivityTimeout(durationMs: number | bigint): Promise<void>;
   interceptOutboundHttp(addr: string, binding: Fetcher): Promise<void>;
   interceptAllOutboundHttp(binding: Fetcher): Promise<void>;
+<<<<<<< HEAD
+=======
+  exec(cmd: string[], options?: ContainerExecOptions): Promise<ExecProcess>;
+  interceptOutboundHttps(addr: string, binding: Fetcher): Promise<void>;
+>>>>>>> 97aaf220b (containers: Implement exec() local dev)
   snapshotDirectory(
     options: ContainerDirectorySnapshotOptions,
   ): Promise<ContainerDirectorySnapshot>;
