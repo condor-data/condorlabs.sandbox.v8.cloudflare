@@ -494,6 +494,7 @@ export interface ExecutionContext<Props = unknown> {
   passThroughOnException(): void;
   readonly exports: Cloudflare.Exports;
   readonly props: Props;
+  cache?: CacheContext;
   readonly version?: {
     readonly metadata?: {
       readonly id: string;
@@ -586,6 +587,23 @@ export interface AlarmInvocationInfo {
 }
 export interface Cloudflare {
   readonly compatibilityFlags: Record<string, boolean>;
+}
+export interface CachePurgeError {
+  code: number;
+  message: string;
+}
+export interface CachePurgeResult {
+  success: boolean;
+  zoneTag: string;
+  errors: CachePurgeError[];
+}
+export interface CachePurgeOptions {
+  tags?: string[];
+  pathPrefixes?: string[];
+  purgeEverything?: boolean;
+}
+export interface CacheContext {
+  purge(options: CachePurgeOptions): Promise<CachePurgeResult>;
 }
 export declare abstract class ColoLocalActorNamespace {
   get(actorId: string): Fetcher;
