@@ -339,6 +339,24 @@ export const getBuiltinModuleFromEval = {
   },
 };
 
+// Regression test: createRequire called from a function defined in eval'd
+// code should work. Same root cause as getBuiltinModuleFromEval.
+export const createRequireFromEval = {
+  async test(_, env) {
+    const code = `"use strict";async (exports)=>{
+      const { createRequire } = process.getBuiltinModule("node:module");
+      const require = createRequire("/");
+      exports.getUtil = () => require("node:util");
+    }`;
+    const exports = {};
+    const fn = env.unsafe.eval(code);
+    await fn(exports);
+
+    const util = exports.getUtil();
+    ok(util.promisify, 'node:util should have promisify');
+  },
+};
+
 // TODO(now): Tests
 // * [x] Include tests for all known module types
 //   * [x] ESM
