@@ -13868,6 +13868,7 @@ declare namespace TailStream {
     | "loadShed"
     | "responseStreamDisconnected"
     | "scriptNotFound";
+  type SpanKind = "client" | "server" | "producer" | "consumer" | "internal";
   interface ScriptVersion {
     readonly id: string;
     readonly tag?: string;
