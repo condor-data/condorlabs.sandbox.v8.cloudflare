@@ -76,6 +76,9 @@ struct ActorSqliteTest final {
 
     kj::Promise<void> scheduleRun(
         kj::Maybe<kj::Date> newAlarmTime, kj::Promise<void> priorTask) override {
+      KJ_IF_SOME(h, parent.scheduleRunWithPriorHandler) {
+        return h(newAlarmTime, kj::mv(priorTask));
+      }
       KJ_IF_SOME(h, parent.scheduleRunHandler) {
         return h(newAlarmTime);
       }
@@ -90,6 +93,8 @@ struct ActorSqliteTest final {
     ActorSqliteTest& parent;
   };
   kj::Maybe<kj::Function<kj::Promise<void>(kj::Maybe<kj::Date>)>> scheduleRunHandler;
+  kj::Maybe<kj::Function<kj::Promise<void>(kj::Maybe<kj::Date>, kj::Promise<void>)>>
+      scheduleRunWithPriorHandler;
   ActorSqliteTestHooks hooks = ActorSqliteTestHooks(*this);
 
   ActorSqlite actor;
@@ -1271,6 +1276,112 @@ KJ_TEST("armAlarmHandler with coalesced pending alarms schedules reschedule exac
   fulfiller10Ms->fulfill();
   test.pollAndExpectCalls({});
   KJ_ASSERT(expectSync(test.getAlarm()) == tenMs);
+}
+
+KJ_TEST("coalesced move-later followed by move-earlier serializes scheduleRun calls") {
+  // Scenario: alarm at 1ms -> move to 5ms (later, in-flight) -> move to 10ms (coalesced)
+  // -> move to 2ms (earlier). Verifies that the move-earlier's scheduleRun(2ms) does not
+  // overlap with the coalesced scheduleRun(10ms). Both originate from branches of the
+  // in-flight 5ms fork, so they could be sent concurrently if priorTask serialization
+  // is incorrect.
+  ActorSqliteTest test;
+
+  uint activeRpcs = 0;
+  uint maxConcurrentRpcs = 0;
+
+  // Custom handler that respects priorTask ordering. The real alarm manager awaits
+  // priorTask before sending its RPC; we replicate that here and count concurrent calls.
+  test.scheduleRunWithPriorHandler = [&](kj::Maybe<kj::Date> newAlarmTime,
+      kj::Promise<void> priorTask) -> kj::Promise<void> {
+    return priorTask.then([&, newAlarmTime]() mutable -> kj::Promise<void> {
+      activeRpcs++;
+      maxConcurrentRpcs = kj::max(maxConcurrentRpcs, activeRpcs);
+      auto desc = newAlarmTime.map([](auto& t) {
+        return kj::str("scheduleRun(", t, ")");
+      }).orDefault(kj::str("scheduleRun(none)"));
+      auto [promise, fulfiller] = kj::newPromiseAndFulfiller<void>();
+      test.calls.add(ActorSqliteTest::Call{kj::mv(desc), kj::mv(fulfiller)});
+      return promise.then([&]() { activeRpcs--; });
+    });
+  };
+
+  // Poll event loop until at least `count` calls accumulate, then verify descriptions.
+  // With the priorTask-respecting handler, calls take extra event loop turns to appear.
+  auto drainCalls = [&](std::initializer_list<kj::StringPtr> expected,
+                        kj::StringPtr msg = ""_kj) {
+    size_t need = expected.size();
+    for (int i = 0; i < 100; i++) {
+      test.ws.poll();
+      if (need == 0 && i >= 10) break;
+      if (need > 0 && test.calls.size() >= need) break;
+    }
+    auto callDescs = KJ_MAP(c, test.calls) { return kj::str(c.desc); };
+    KJ_ASSERT(callDescs == kj::heapArray(expected), msg);
+    auto fulfillers = KJ_MAP(c, test.calls) { return kj::mv(c.fulfiller); };
+    test.calls.clear();
+    return kj::mv(fulfillers);
+  };
+
+  // 1. Initialize alarm state to 1ms.
+  test.setAlarm(oneMs);
+  drainCalls({"scheduleRun(1ms)"})[0]->fulfill();
+  drainCalls({"commit"})[0]->fulfill();
+  drainCalls({});
+  KJ_ASSERT(expectSync(test.getAlarm()) == oneMs);
+
+  // 2. Move alarm to 5ms (later). The db commit completes, then scheduleRun(5ms)
+  //    fires post-commit via scheduleLaterAlarm. Hold the fulfiller to keep it in-flight.
+  test.setAlarm(fiveMs);
+  drainCalls({"commit"})[0]->fulfill();
+  auto fulfiller5Ms = kj::mv(drainCalls({"scheduleRun(5ms)"})[0]);
+
+  // 3. While scheduleRun(5ms) is in-flight, move alarm to 10ms (later).
+  //    Since alarmLaterIsInFlight is true, 10ms is coalesced into pendingLaterAlarmTime.
+  test.setAlarm(tenMs);
+  drainCalls({"commit"})[0]->fulfill();
+  drainCalls({});  // No scheduleRun -- coalesced into pending.
+
+  // 4. Move alarm earlier to 2ms. startPrecommitAlarmScheduling() calls
+  //    requestScheduledAlarm(2ms, alarmLaterInFlight.addBranch()). The priorTask is a
+  //    branch of the 5ms fork which is still pending, so our handler blocks.
+  test.setAlarm(twoMs);
+  drainCalls({});  // scheduleRun(2ms) blocked on priorTask.
+
+  // 5. Fulfill scheduleRun(5ms). The completion handler fires scheduleLaterAlarm(10ms).
+  //    The move-earlier's priorTask (5ms branch) also resolves.
+  fulfiller5Ms->fulfill();
+
+  // Collect both scheduleRun calls without fulfilling them. We must not fulfill either
+  // one early: that would let the activeRpcs counter drain before the second call is
+  // registered, hiding a real overlap.
+  kj::Vector<kj::Own<kj::PromiseFulfiller<void>>> pendingRpcs;
+  for (int round = 0; round < 5 && pendingRpcs.size() < 2; round++) {
+    for (int i = 0; i < 100; i++) {
+      test.ws.poll();
+      if (test.calls.size() > 0) break;
+    }
+    for (auto& call : test.calls) {
+      pendingRpcs.add(kj::mv(call.fulfiller));
+    }
+    test.calls.clear();
+  }
+  KJ_ASSERT(pendingRpcs.size() == 2,
+      "expected exactly scheduleRun(10ms) and scheduleRun(2ms)");
+
+  // The key assertion: if priorTask serialization is correct, at most one scheduleRun
+  // should have been active at a time. A value > 1 means two RPCs were sent concurrently.
+  KJ_ASSERT(maxConcurrentRpcs <= 1,
+      "scheduleRun RPCs were sent concurrently -- the move-earlier's priorTask "
+      "did not chain through the coalesced move-later");
+
+  // 6. Now fulfill both and let the commit for the 2ms change proceed.
+  for (auto& f : pendingRpcs) f->fulfill();
+  drainCalls({"commit"})[0]->fulfill();
+
+  // Let any remaining completion handlers settle.
+  for (int i = 0; i < 20; i++) test.ws.poll();
+
+  KJ_ASSERT(expectSync(test.getAlarm()) == twoMs);
 }
 
 KJ_TEST("an exception thrown during merged commits does not hang") {
