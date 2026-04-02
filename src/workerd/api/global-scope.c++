@@ -506,8 +506,7 @@ kj::Promise<WorkerInterface::AlarmResult> ServiceWorkerGlobalScope::runAlarm(kj:
 
         lock.logWarningOnce("Attempted to run a scheduled alarm without a handler, "
                             "did you remember to export an alarm() function?");
-        return WorkerInterface::AlarmResult{
-          .retry = false, .outcome = EventOutcome::SCRIPT_NOT_FOUND};
+        JSG_FAIL_REQUIRE(Error, "Handler does not export an alarm() function.");
       }
 
       auto& alarm = KJ_ASSERT_NONNULL(handler.alarm);
