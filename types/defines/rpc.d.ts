@@ -320,7 +320,7 @@ declare namespace CloudflareWorkersModule {
 
   export interface RollbackContext<T> {
     error: Error;
-    output: T | undefined;
+    output: NonNullable<T> | undefined;
     stepName: string;
   }
 

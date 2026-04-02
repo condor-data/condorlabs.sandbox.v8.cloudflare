@@ -24,25 +24,10 @@ type ExecuteFn = (
 ) => Promise<unknown>;
 type RunFn = (event: unknown, step: unknown, ...rest: unknown[]) => unknown;
 
-// The step RPC stub interface — mirrors what the engine exposes via JS RPC.
 interface StepRpcStub {
   do(...args: unknown[]): Promise<unknown>;
-  sleep(name: string, duration: unknown): Promise<void>;
-  sleepUntil(name: string, timestamp: unknown): Promise<void>;
   waitForEvent(...args: unknown[]): Promise<unknown>;
-}
-
-// The wrapped step interface returned by wrapStep(). Matches StepRpcStub but do() and
-// waitForEvent() return StepPromise instead of plain Promise.
-interface WrappedStep {
-  do(
-    name: string,
-    configOrCallback: unknown,
-    maybeCallback?: unknown
-  ): StepPromise;
-  sleep(name: string, duration: unknown): Promise<void>;
-  sleepUntil(name: string, timestamp: unknown): Promise<void>;
-  waitForEvent(name: string, options: unknown): StepPromise;
+  [method: string]: (...args: unknown[]) => unknown;
 }
 
 // StepPromise is a real Promise subclass that captures .rollback() synchronously before
@@ -142,58 +127,58 @@ class StepPromise extends Promise<unknown> {
 }
 
 // Wraps the step RPC stub so that step.do() and step.waitForEvent() return StepPromise instances.
-// sleep() and sleepUntil() are passed through unchanged (they return Promise<void>, no rollback).
-function wrapStep(jsStep: StepRpcStub): WrappedStep {
-  return {
-    do(
-      name: string,
-      configOrCallback: unknown,
-      maybeCallback?: unknown
-    ): StepPromise {
-      return new StepPromise(
-        (rollbackFn: RollbackFn, rollbackConfig: RollbackConfig) => {
-          const args: unknown[] = [name];
-          if (maybeCallback !== undefined) {
-            // do(name, config, callback) form
-            args.push(configOrCallback, maybeCallback);
-          } else {
-            // do(name, callback) form
-            args.push(configOrCallback);
-          }
-          if (rollbackFn !== null) {
-            args.push(rollbackFn);
-            if (rollbackConfig !== null) {
-              args.push(rollbackConfig);
+// All other methods (sleep, sleepUntil, and any future additions) are forwarded unchanged via Proxy.
+function wrapStep(jsStep: StepRpcStub): StepRpcStub {
+  return new Proxy(jsStep, {
+    get(
+      target: StepRpcStub,
+      prop: string | symbol,
+      receiver: unknown
+    ): unknown {
+      if (prop === 'do') {
+        return (
+          name: string,
+          configOrCallback: unknown,
+          maybeCallback?: unknown
+        ): StepPromise => {
+          return new StepPromise(
+            (rollbackFn: RollbackFn, rollbackConfig: RollbackConfig) => {
+              const args: unknown[] = [name];
+              if (maybeCallback !== undefined) {
+                args.push(configOrCallback, maybeCallback);
+              } else {
+                args.push(configOrCallback);
+              }
+              if (rollbackFn !== null) {
+                args.push(rollbackFn);
+                if (rollbackConfig !== null) {
+                  args.push(rollbackConfig);
+                }
+              }
+              return target.do(...args);
             }
-          }
-          return jsStep.do(...args);
-        }
-      );
-    },
-
-    sleep(name: string, duration: unknown): Promise<void> {
-      return jsStep.sleep(name, duration);
-    },
-
-    sleepUntil(name: string, timestamp: unknown): Promise<void> {
-      return jsStep.sleepUntil(name, timestamp);
-    },
-
-    waitForEvent(name: string, options: unknown): StepPromise {
-      return new StepPromise(
-        (rollbackFn: RollbackFn, rollbackConfig: RollbackConfig) => {
-          const args: unknown[] = [name, options];
-          if (rollbackFn !== null) {
-            args.push(rollbackFn);
-            if (rollbackConfig !== null) {
-              args.push(rollbackConfig);
+          );
+        };
+      }
+      if (prop === 'waitForEvent') {
+        return (name: string, options: unknown): StepPromise => {
+          return new StepPromise(
+            (rollbackFn: RollbackFn, rollbackConfig: RollbackConfig) => {
+              const args: unknown[] = [name, options];
+              if (rollbackFn !== null) {
+                args.push(rollbackFn);
+                if (rollbackConfig !== null) {
+                  args.push(rollbackConfig);
+                }
+              }
+              return target.waitForEvent(...args);
             }
-          }
-          return jsStep.waitForEvent(...args);
-        }
-      );
+          );
+        };
+      }
+      return Reflect.get(target, prop, receiver) as unknown;
     },
-  };
+  });
 }
 
 // Wraps a run function so that its second argument (step) is replaced with wrapStep(step).
