@@ -376,10 +376,10 @@ class QueueEvent final: public ExtendableEvent {
   using CompletionStatus = kj::OneOf<Incomplete, CompletedSuccessfully, CompletedWithError>;
 
   void setCompletionStatus(CompletionStatus status) {
-    completionStatus = status;
+    completionStatus = kj::mv(status);
   }
 
-  CompletionStatus getCompletionStatus() const {
+  const CompletionStatus& getCompletionStatus() const {
     return completionStatus;
   }
 

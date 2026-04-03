@@ -246,7 +246,7 @@ void ActorCache::requireNotTerminal(SpanParent traceSpan) {
       ensureFlushScheduled({}, kj::mv(traceSpan));
     }
 
-    kj::throwFatalException(kj::cp(e));
+    kj::throwFatalException(e.clone());
   }
 }
 
@@ -266,7 +266,7 @@ void ActorCache::evictOrOomIfNeeded(Lock& lock) {
     exception.setDetail(jsg::EXCEPTION_IS_USER_ERROR, kj::heapArray<byte>(0));
 
     if (maybeTerminalException == kj::none) {
-      maybeTerminalException.emplace(kj::cp(exception));
+      maybeTerminalException.emplace(exception.clone());
     } else {
       // We've already experienced a terminal exception either from shutdown or OOM. Note that we
       // still schedule the flush since shutdown does not.
@@ -2297,7 +2297,7 @@ void ActorCache::shutdown(kj::Maybe<const kj::Exception&> maybeException) {
     auto exception = [&]() {
       KJ_IF_SOME(e, maybeException) {
         // We were given an exception, use it.
-        return kj::cp(e);
+        return e.clone();
       }
 
       // Use the direct constructor so that we can reuse the constexpr message variable for testing.
@@ -2579,7 +2579,7 @@ kj::Promise<void> ActorCache::flushImpl(uint retryCount) {
     // If we have a terminal exception, throw here to break the output gate and prevent any calls
     // to storage. This does not use `requireNotTerminal()` so that we don't recursively schedule
     // flushes.
-    kj::throwFatalException(kj::cp(e));
+    kj::throwFatalException(e.clone());
   }
 
   auto flushProm = startFlushTransaction();

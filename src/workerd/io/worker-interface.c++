@@ -117,7 +117,7 @@ class RevocableWebSocket final: public kj::WebSocket {
       : ws(kj::mv(ws)),
         revokeProm(revokeProm
                        .catch_([this](kj::Exception&& e) -> kj::Promise<void> {
-                         canceler.cancel(kj::cp(e));
+                         canceler.cancel(e.clone());
                          KJ_IF_SOME(ws, this->ws.tryGet<kj::Own<kj::WebSocket>>()) {
                            (ws)->abort();
                          }
@@ -186,7 +186,7 @@ class RevocableWebSocket final: public kj::WebSocket {
   kj::WebSocket& getInner() {
     KJ_SWITCH_ONEOF(ws) {
       KJ_CASE_ONEOF(e, kj::Exception) {
-        kj::throwFatalException(kj::cp(e));
+        kj::throwFatalException(e.clone());
       }
       KJ_CASE_ONEOF(ws, kj::Own<kj::WebSocket>) {
         return *ws.get();
@@ -307,7 +307,7 @@ namespace {
 
 class ErrorWorkerInterface final: public WorkerInterface {
  public:
-  ErrorWorkerInterface(kj::Exception&& exception): exception(exception) {}
+  ErrorWorkerInterface(kj::Exception&& exception): exception(kj::mv(exception)) {}
 
   kj::Promise<void> request(kj::HttpMethod method,
       kj::StringPtr url,
@@ -441,7 +441,7 @@ void WorkerInterface::AlarmFulfiller::fulfill(const AlarmOutcome& result) {
 
 void WorkerInterface::AlarmFulfiller::reject(const kj::Exception& e) {
   KJ_IF_SOME(fulfiller, getFulfiller()) {
-    fulfiller.reject(kj::cp(e));
+    fulfiller.reject(e.clone());
   }
 }
 
