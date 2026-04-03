@@ -294,6 +294,10 @@ struct SpanContext {
     return SpanContext(ctx.traceId, ctx.spanId);
   }
 
+  // Parse a W3C traceparent string into a SpanContext.
+  // Format: "{version}-{trace-id}-{parent-id}-{flags}"
+  static kj::Maybe<SpanContext> fromTraceparent(kj::StringPtr traceparent);
+
  private:
   TraceId traceId;
   kj::Maybe<SpanId> spanId;

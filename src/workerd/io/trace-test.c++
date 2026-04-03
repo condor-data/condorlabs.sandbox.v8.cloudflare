@@ -614,5 +614,78 @@ KJ_TEST("Trace with Durable Object ID") {
   auto trace2 = kj::refcounted<Trace>(traceBuilder.asReader());
   KJ_ASSERT(KJ_REQUIRE_NONNULL(trace2->durableObjectId) == "abc123def456"_kj);
 }
+KJ_TEST("SpanContext::fromTraceparent valid") {
+  auto result = KJ_ASSERT_NONNULL(
+      SpanContext::fromTraceparent("00-11223344556677889900aabbccddeeff-a1b2c3d4e5f60718-01"_kj));
+  KJ_EXPECT(result.getTraceId() == TraceId(0x9900aabbccddeeff, 0x1122334455667788));
+  KJ_EXPECT(KJ_ASSERT_NONNULL(result.getSpanId()) == SpanId(0xa1b2c3d4e5f60718));
+}
+
+KJ_TEST("SpanContext::fromTraceparent sampled with extra flags") {
+  auto result = KJ_ASSERT_NONNULL(
+      SpanContext::fromTraceparent("00-11223344556677889900aabbccddeeff-a1b2c3d4e5f60718-03"_kj));
+  KJ_EXPECT(result.getTraceId() == TraceId(0x9900aabbccddeeff, 0x1122334455667788));
+  KJ_EXPECT(KJ_ASSERT_NONNULL(result.getSpanId()) == SpanId(0xa1b2c3d4e5f60718));
+}
+
+KJ_TEST("SpanContext::fromTraceparent rejects invalid inputs") {
+  // Empty
+  KJ_EXPECT(SpanContext::fromTraceparent(""_kj) == kj::none);
+  // Degenerate
+  KJ_EXPECT(SpanContext::fromTraceparent("---"_kj) == kj::none);
+  KJ_EXPECT(SpanContext::fromTraceparent("00-1-1-00"_kj) == kj::none);
+
+  // Wrong total length (too short, too long)
+  KJ_EXPECT(SpanContext::fromTraceparent(
+                "00-11223344556677889900aabbccddeeff-a1b2c3d4e5f60718-0"_kj) == kj::none);
+  KJ_EXPECT(SpanContext::fromTraceparent(
+                "00-11223344556677889900aabbccddeeff-a1b2c3d4e5f60718-012"_kj) == kj::none);
+
+  // Wrong field sizes: version too short
+  KJ_EXPECT(SpanContext::fromTraceparent(
+                "0-11223344556677889900aabbccddeeff0-a1b2c3d4e5f60718-01"_kj) == kj::none);
+  // Wrong field sizes: trace-id too long
+  KJ_EXPECT(SpanContext::fromTraceparent(
+                "00-11223344556677889900aabbccddeeff0-1b2c3d4e5f60718-01"_kj) == kj::none);
+  // Wrong field sizes: trace-id too short
+  KJ_EXPECT(SpanContext::fromTraceparent(
+                "00-11223344556677889900aabbccddee-a1b2c3d4e5f6071800-01"_kj) == kj::none);
+  // Wrong field sizes: parent-id too long
+  KJ_EXPECT(SpanContext::fromTraceparent(
+                "00-1223344556677889900aabbccddeeff-a1b2c3d4e5f607180-01"_kj) == kj::none);
+  // Wrong field sizes: parent-id too short
+  KJ_EXPECT(SpanContext::fromTraceparent(
+                "00-112233445566778899900aabbccddeeff-1b2c3d4e5f6071-01"_kj) == kj::none);
+  // Empty fields
+  KJ_EXPECT(SpanContext::fromTraceparent("00--a1b2c3d4e5f60718-01"_kj) == kj::none);
+  KJ_EXPECT(SpanContext::fromTraceparent("00-11223344556677889900aabbccddeeff--01"_kj) == kj::none);
+
+  // Bad hex
+  KJ_EXPECT(SpanContext::fromTraceparent(
+                "0g-11223344556677889900aabbccddeeff-a1b2c3d4e5f60718-01"_kj) == kj::none);
+  KJ_EXPECT(SpanContext::fromTraceparent(
+                "00-x1223344556677889900aabbccddeeff-a1b2c3d4e5f60718-01"_kj) == kj::none);
+  KJ_EXPECT(SpanContext::fromTraceparent(
+                "00-11223344556677889900aabbccddeeff-a1b2c3d4e5f6071x-01"_kj) == kj::none);
+
+  // Unsupported version
+  KJ_EXPECT(SpanContext::fromTraceparent(
+                "01-11223344556677889900aabbccddeeff-a1b2c3d4e5f60718-01"_kj) == kj::none);
+  KJ_EXPECT(SpanContext::fromTraceparent(
+                "ff-11223344556677889900aabbccddeeff-a1b2c3d4e5f60718-01"_kj) == kj::none);
+
+  // All-zero trace-id
+  KJ_EXPECT(SpanContext::fromTraceparent(
+                "00-00000000000000000000000000000000-a1b2c3d4e5f60718-01"_kj) == kj::none);
+
+  // All-zero parent-id
+  KJ_EXPECT(SpanContext::fromTraceparent(
+                "00-11223344556677889900aabbccddeeff-0000000000000000-01"_kj) == kj::none);
+
+  // Unsampled
+  KJ_EXPECT(SpanContext::fromTraceparent(
+                "00-11223344556677889900aabbccddeeff-a1b2c3d4e5f60718-00"_kj) == kj::none);
+}
+
 }  // namespace
 }  // namespace workerd::tracing

@@ -309,6 +309,42 @@ void SpanContext::toCapnp(rpc::SpanContext::Builder writer) const {
   }
 }
 
+kj::Maybe<SpanContext> SpanContext::fromTraceparent(kj::StringPtr tp) {
+  // W3C traceparent: "{version}-{trace-id}-{parent-id}-{flags}"
+  constexpr size_t kVersionStart = 0;
+  constexpr size_t kVersionEnd = 2;
+  constexpr size_t kTraceIdStart = 3;
+  constexpr size_t kTraceIdMid = 19;
+  constexpr size_t kTraceIdEnd = 35;
+  constexpr size_t kParentIdStart = 36;
+  constexpr size_t kParentIdEnd = 52;
+  constexpr size_t kFlagsStart = 53;
+  constexpr size_t kFlagsEnd = 55;
+
+  if (tp.size() != kFlagsEnd) return kj::none;
+  if (tp[kVersionEnd] != '-' || tp[kTraceIdEnd] != '-' || tp[kParentIdEnd] != '-') {
+    return kj::none;
+  }
+
+  uint8_t version =
+      KJ_UNWRAP_OR_RETURN(hexToUint64(tp.slice(kVersionStart, kVersionEnd)), kj::none);
+  uint64_t traceHigh =
+      KJ_UNWRAP_OR_RETURN(hexToUint64(tp.slice(kTraceIdStart, kTraceIdMid)), kj::none);
+  uint64_t traceLow =
+      KJ_UNWRAP_OR_RETURN(hexToUint64(tp.slice(kTraceIdMid, kTraceIdEnd)), kj::none);
+  uint64_t parentId =
+      KJ_UNWRAP_OR_RETURN(hexToUint64(tp.slice(kParentIdStart, kParentIdEnd)), kj::none);
+  uint8_t flags = KJ_UNWRAP_OR_RETURN(hexToUint64(tp.slice(kFlagsStart, kFlagsEnd)), kj::none);
+
+  if (version != 0) return kj::none;
+  if (traceHigh == 0 && traceLow == 0) return kj::none;
+  if (parentId == 0) return kj::none;
+  constexpr uint8_t kSampledFlag = 0x01;
+  if ((flags & kSampledFlag) == 0) return kj::none;
+
+  return SpanContext(TraceId(traceLow, traceHigh), SpanId(parentId));
+}
+
 kj::String KJ_STRINGIFY(const SpanContext& context) {
   return kj::str(context.getTraceId(), "-", context.getSpanId());
 }
