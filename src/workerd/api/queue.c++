@@ -265,7 +265,7 @@ kj::Promise<void> WorkerQueue::send(
     }
 
     // Read and discard response body, otherwise we might burn the HTTP connection.
-    co_await response.body->readAllBytes().ignoreResult();
+    co_await response.body->readAllBytes();
   };
 
   return handleSend(kj::mv(req), kj::mv(serialized), kj::mv(client), headerIds, exposeErrorCodes)
@@ -449,7 +449,7 @@ kj::Promise<void> WorkerQueue::sendBatch(jsg::Lock& js,
     }
 
     // Read and discard response body, otherwise we might burn the HTTP connection.
-    co_await response.body->readAllBytes().ignoreResult();
+    co_await response.body->readAllBytes();
   };
 
   return handleWrite(kj::mv(req), kj::mv(body), kj::mv(client), headerIds, exposeErrorCodes)

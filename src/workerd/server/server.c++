@@ -1151,13 +1151,15 @@ class Server::DiskDirectoryService final: public Service, private WorkerInterfac
             auto out = response.send(206, "Partial Content", headers, rangeSize);
 
             auto in = kj::heap<kj::FileInputStream>(*file, r.start);
-            co_return co_await in->pumpTo(*out, rangeSize).ignoreResult();
+            co_await in->pumpTo(*out, rangeSize);
+            co_return;
           } else {
             headers.set(kj::HttpHeaderId::CONTENT_LENGTH, kj::str(meta.size));
             auto out = response.send(200, "OK", headers, meta.size);
 
             auto in = kj::heap<kj::FileInputStream>(*file);
-            co_return co_await in->pumpTo(*out, meta.size).ignoreResult();
+            co_await in->pumpTo(*out, meta.size);
+            co_return;
           }
         }
         case kj::FsNode::Type::DIRECTORY: {
@@ -2183,7 +2185,7 @@ class Server::WorkerService final: public Service,
           for (auto& worker: tailWorkers) {
             auto event = kj::heap<workerd::api::TraceCustomEvent>(
                 workerd::api::TraceCustomEvent::TYPE, kj::arr(kj::addRef(*trace)));
-            co_await worker->customEvent(kj::mv(event)).ignoreResult();
+            co_await worker->customEvent(kj::mv(event));
           }
           co_return;
         })));
@@ -3406,7 +3408,7 @@ class Server::WorkerService final: public Service,
 
     KJ_REQUIRE(response.statusCode >= 200 && response.statusCode < 300,
         "writeLogfwdr request returned an error");
-    co_await response.body->readAllBytes().attach(kj::mv(response.body)).ignoreResult();
+    co_await response.body->readAllBytes().attach(kj::mv(response.body));
     co_return;
   }
 
@@ -5127,7 +5129,7 @@ class Server::WorkerdBootstrapImpl final: public rpc::WorkerdBootstrap::Server {
       context.getResults().setTopLevel(kj::mv(cap));
 
       auto worker = getWorker();
-      return worker->customEvent(kj::mv(customEvent)).ignoreResult().attach(kj::mv(worker));
+      co_await worker->customEvent(kj::mv(customEvent)).attach(kj::mv(worker));
     }
 
     kj::Promise<void> tailStreamSession(TailStreamSessionContext context) override {
