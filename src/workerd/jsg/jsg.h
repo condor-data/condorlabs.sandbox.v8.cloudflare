@@ -581,12 +581,20 @@ using HasGetTemplateOverload = decltype(kj::instance<T&>().getTemplate(
     registry.template registerWildcardProperty<Self, decltype(&Self::method), &Self::method>();    \
   } while (false)
 
+template <typename T>
+concept HasRegisterTypeScriptRoot = requires { T::registerTypeScriptRoot; };
+template <typename T>
+concept HasRegisterTypeScriptOverride = requires { T::registerTypeScriptOverride; };
+
 // Use inside a JSG_RESOURCE_TYPE block to declare that this type should be considered a "root" for
 // the purposes of automatically generating TypeScript definitions. All "root" types and their
 // recursively referenced types (e.g. method parameter/return types, property types, inherits, etc)
 // will be included in the generated TypeScript. See the `## TypeScript` section of the JSG README.md
 // for more details.
-#define JSG_TS_ROOT() registry.registerTypeScriptRoot()
+#define JSG_TS_ROOT()                                                                              \
+  if constexpr (::workerd::jsg::HasRegisterTypeScriptRoot<Registry>) {                             \
+    registry.registerTypeScriptRoot();                                                             \
+  }
 
 // Use inside a JSG_RESOURCE_TYPE block to customise the generated TypeScript definition for this type.
 // This macro accepts a single override parameter containing a partial TypeScript statement definition.
@@ -594,8 +602,10 @@ using HasGetTemplateOverload = decltype(kj::instance<T&>().getTemplate(
 // `## TypeScript` section of the JSG README.md for many more details and examples.
 #define JSG_TS_OVERRIDE(...)                                                                       \
   do {                                                                                             \
-    static const char OVERRIDE[] = JSG_STRING_LITERAL(__VA_ARGS__);                                \
-    registry.template registerTypeScriptOverride<OVERRIDE>();                                      \
+    if constexpr (::workerd::jsg::HasRegisterTypeScriptOverride<Registry>) {                       \
+      static const char OVERRIDE[] = JSG_STRING_LITERAL(__VA_ARGS__);                              \
+      registry.template registerTypeScriptOverride<OVERRIDE>();                                    \
+    }                                                                                              \
   } while (false)
 
 // Use inside a JSG_RESOURCE_TYPE block to insert additional TypeScript definitions next to the generated
@@ -720,14 +730,16 @@ concept HasStructTypeScriptDefine = requires { T::_JSG_STRUCT_TS_DEFINE_DO_NOT_U
   template <typename Registry, typename Self, typename Config>                                     \
   static void registerMembersInternal(Registry& registry, Config arg) {                            \
     JSG_FOR_EACH(JSG_STRUCT_REGISTER_MEMBER, , __VA_ARGS__);                                       \
-    if constexpr (::workerd::jsg::HasStructTypeScriptRoot<Self>) {                                 \
+    if constexpr (::workerd::jsg::HasStructTypeScriptRoot<Self> &&                                 \
+        ::workerd::jsg::HasRegisterTypeScriptRoot<Registry>) {                                     \
       registry.registerTypeScriptRoot();                                                           \
     }                                                                                              \
     if constexpr (requires(jsg::GetConfiguration<Self> arg) {                                      \
                     registerTypeScriptDynamicOverride<Registry>(registry, arg);                    \
                   }) {                                                                             \
       registerTypeScriptDynamicOverride<Registry>(registry, arg);                                  \
-    } else if constexpr (::workerd::jsg::HasStructTypeScriptOverride<Self>) {                      \
+    } else if constexpr (::workerd::jsg::HasStructTypeScriptOverride<Self> &&                      \
+        ::workerd::jsg::HasRegisterTypeScriptOverride<Registry>) {                                 \
       registry.template registerTypeScriptOverride<                                                \
           Self::_JSG_STRUCT_TS_OVERRIDE_DO_NOT_USE_DIRECTLY>();                                    \
     }                                                                                              \
