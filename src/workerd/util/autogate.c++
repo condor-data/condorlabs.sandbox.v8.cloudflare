@@ -35,6 +35,8 @@ kj::StringPtr KJ_STRINGIFY(AutogateKey key) {
       return "enable-fast-textencoder"_kj;
     case AutogateKey::ENABLE_DRAINING_READ_ON_STANDARD_STREAMS:
       return "enable-draining-read-on-standard-streams"_kj;
+    case AutogateKey::USER_SPAN_CONTEXT_PROPAGATION:
+      return "user-span-context-propagation"_kj;
     case AutogateKey::NumOfKeys:
       KJ_FAIL_ASSERT("NumOfKeys should not be used in getName");
   }
