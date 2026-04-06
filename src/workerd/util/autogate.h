@@ -39,6 +39,8 @@ enum class AutogateKey {
   ENABLE_FAST_TEXTENCODER,
   // Enable draining read on standard streams
   ENABLE_DRAINING_READ_ON_STANDARD_STREAMS,
+  // Enable user span context propagation across worker-to-worker subrequests.
+  USER_SPAN_CONTEXT_PROPAGATION,
   NumOfKeys  // Reserved for iteration.
 };
 
