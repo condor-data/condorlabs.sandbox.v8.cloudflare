@@ -59,6 +59,14 @@ runs:
         # Set up Googlesource credentials
         git config --global http.cookiefile "$env:USERPROFILE\.gitcookies"
         Write-Output ".googlesource.com`tTRUE`t/`tTRUE`t2147483647`to`t$env:GOOGLESOURCE_COOKIE" >> "$env:USERPROFILE\.gitcookies"
+    - name: Use Bazel 9.0.2rc1 on ARM64 Windows
+      shell: pwsh
+      if: runner.os == 'Windows' && runner.arch == 'ARM64'
+      # Bazel 9.0.1 has a broken ARM64 Windows build (bazelbuild/bazel#28941).
+      # Use 9.0.2rc1 which fixes the JNI DLL architecture mismatch.
+      # TODO(cleanup): Remove this once .bazelversion is bumped to 9.0.2+.
+      run: |
+        echo "USE_BAZEL_VERSION=9.0.2rc1" >> $env:GITHUB_ENV
     - name: Setup macOS
       if: runner.os == 'macOS'
       shell: bash

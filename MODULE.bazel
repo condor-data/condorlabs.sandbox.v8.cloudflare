@@ -45,6 +45,19 @@ archive_override(
     url = "https://github.com/bazel-contrib/yq.bzl/releases/download/v0.3.5/yq.bzl-v0.3.5.tar.gz",
 )
 
+# Patch aspect_rules_js to add yq_windows_arm64 to its use_repo list. Without this, the
+# @yq_windows_arm64 repo created by yq.bzl is not visible from aspect_rules_js's module scope.
+archive_override(
+    module_name = "aspect_rules_js",
+    integrity = "sha256-eBgxR7xQutVxi+c7M4Dn9G4hR/PJl6KQ4sXpWZQQUuE=",
+    patch_args = ["-p1"],
+    patches = [
+        "//:patches/aspect_rules_js/0001-add-yq-windows-arm64-to-use-repo.patch",
+    ],
+    strip_prefix = "rules_js-3.0.3",
+    url = "https://github.com/aspect-build/rules_js/releases/download/v3.0.3/rules_js-v3.0.3.tar.gz",
+)
+
 # Automatically managed dependencies
 include("//build/deps:gen/deps.MODULE.bazel")
 include("//build/deps:gen/build_deps.MODULE.bazel")
