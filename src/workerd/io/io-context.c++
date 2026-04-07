@@ -1009,27 +1009,30 @@ kj::Own<WorkerInterface> IoContext::getSubrequestChannelImpl(uint channel,
     kj::Maybe<kj::String> cfBlobJson,
     TraceContext& tracing,
     IoChannelFactory& channelFactory) {
-  const auto& invCtx = getInvocationSpanContext();
-  kj::Maybe<tracing::SpanContext> userSpanContext;
-  if (util::Autogate::isEnabled(util::AutogateKey::USER_SPAN_CONTEXT_PROPAGATION)) {
-    auto traceId = invCtx.getTraceId();
-    auto spanId = invCtx.getSpanId();
-    KJ_IF_SOME(observer, tracing.getUserSpanParent().getObserver()) {
-      auto& userObs = kj::downcast<UserSpanObserver>(observer);
-      spanId = userObs.getSpanId();
-    }
-    userSpanContext = tracing::SpanContext(traceId, spanId);
-  }
   IoChannelFactory::SubrequestMetadata metadata{
     .cfBlobJson = kj::mv(cfBlobJson),
     .parentSpan = tracing.getInternalSpanParent(),
-    .userSpanContext = kj::mv(userSpanContext),
+    .userSpanContext = getUserSpanContext(tracing),
     .featureFlagsForFl = mapCopyString(worker->getIsolate().getFeatureFlagsForFl()),
   };
 
   auto client = channelFactory.startSubrequest(channel, kj::mv(metadata));
 
   return client;
+}
+
+kj::Maybe<tracing::SpanContext> IoContext::getUserSpanContext(TraceContext& tracing) {
+  if (!util::Autogate::isEnabled(util::AutogateKey::USER_SPAN_CONTEXT_PROPAGATION)) {
+    return kj::none;
+  }
+  const auto& invCtx = getInvocationSpanContext();
+  auto traceId = invCtx.getTraceId();
+  auto spanId = invCtx.getSpanId();
+  KJ_IF_SOME(observer, tracing.getUserSpanParent().getObserver()) {
+    auto& userObs = kj::downcast<UserSpanObserver>(observer);
+    spanId = userObs.getSpanId();
+  }
+  return tracing::SpanContext(traceId, spanId);
 }
 
 kj::Own<kj::HttpClient> IoContext::getHttpClient(
