@@ -74,6 +74,8 @@ on:
         required: true
       CODECOV_TOKEN:
         required: false
+      GOOGLESOURCE_COOKIE:
+        required: true
 
 permissions:
   # Read repo
@@ -100,6 +102,8 @@ jobs:
           # resulting in a snowballing cache size and cache download/upload times.
       - name: Setup Runner
         uses: ./.github/actions/setup-runner
+        with:
+          GOOGLESOURCE_COOKIE: ${{ secrets.GOOGLESOURCE_COOKIE }}
       - name: Setup lld on macOS
         if: runner.os == 'macOS' && inputs.macos_use_lld
         run: |

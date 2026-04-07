@@ -26,6 +26,10 @@ jobs:
           show-progress: false
           token: ${{ secrets.DEVPROD_PAT }}
           ref: main
+      - name: Setup Runner
+        uses: ./.github/actions/setup-runner
+        with:
+          GOOGLESOURCE_COOKIE: ${{ secrets.GOOGLESOURCE_COOKIE }}
       - name: Update dependencies
         run: build/deps/update-deps.py
         env:

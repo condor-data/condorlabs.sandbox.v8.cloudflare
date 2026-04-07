@@ -41,6 +41,8 @@ jobs:
 
       - name: Setup Runner
         uses: ./.github/actions/setup-runner
+        with:
+          GOOGLESOURCE_COOKIE: ${{ secrets.GOOGLESOURCE_COOKIE }}
 
       - name: Build benchmarks
         run: |

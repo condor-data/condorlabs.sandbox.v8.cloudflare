@@ -40,3 +40,4 @@ jobs:
       BAZEL_CACHE_KEY: ${{ secrets.BAZEL_CACHE_KEY }}
       WORKERS_MIRROR_URL: ${{ secrets.WORKERS_MIRROR_URL }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      GOOGLESOURCE_COOKIE: ${{ secrets.GOOGLESOURCE_COOKIE }}

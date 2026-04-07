@@ -22,6 +22,8 @@ jobs:
           python-version: '3.13'
       - name: Setup Runner
         uses: ./.github/actions/setup-runner
+        with:
+          GOOGLESOURCE_COOKIE: ${{ secrets.GOOGLESOURCE_COOKIE }}
       - name: Configure download mirrors
         shell: bash
         run: |
