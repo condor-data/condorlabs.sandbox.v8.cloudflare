@@ -294,10 +294,7 @@ const expectedWithPropagation = [
   n(E.wsUpgrade),
   // wsMessage and wsClose are children of wsHibernation because the trace context
   // was captured at acceptWebSocket() time and restored when the DO was woken up.
-  n(E.wsHibernation, [
-    n(E.wsMessage),
-    n(E.wsClose),
-  ]),
+  n(E.wsHibernation, [n(E.wsMessage), n(E.wsClose)]),
 
   // cacheMode: standalone
   n(E.cacheMode),
