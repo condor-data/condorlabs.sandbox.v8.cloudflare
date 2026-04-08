@@ -70,9 +70,12 @@ class Socket: public jsg::Object {
       SecureTransportKind secureTransport,
       kj::Maybe<kj::String> domain,
       bool isDefaultFetchPort,
-      jsg::PromiseResolverPair<SocketInfo> openedPrPair)
-      : connectionData(context.addObject(kj::heap<ConnectionData>(
-            kj::mv(tlsStarter), kj::mv(connectionStream), kj::mv(watchForDisconnectTask)))),
+      jsg::PromiseResolverPair<SocketInfo> openedPrPair,
+      kj::Maybe<kj::Promise<void>> connectTask = kj::none)
+      : connectionData(context.addObject(kj::heap<ConnectionData>(kj::mv(tlsStarter),
+            kj::mv(connectionStream),
+            kj::mv(watchForDisconnectTask),
+            kj::mv(connectTask)))),
         readable(kj::mv(readableParam)),
         writable(kj::mv(writable)),
         closedResolver(kj::mv(closedPrPair.resolver)),
@@ -182,12 +185,17 @@ class Socket: public jsg::Object {
     // tlsStarter must be declared after connectionStream so that it is destroyed first,
     // since it holds a reference that keeps the connection alive.
     kj::Own<kj::TlsStarterCallback> tlsStarter;
+    // connectTask must be declared after tlsStarter so that it is destroyed first,
+    // since the coroutine frame holds a raw pointer to tlsStarter via httpConnectSettings.
+    kj::Maybe<kj::Promise<void>> connectTask;
     ConnectionData(kj::Own<kj::TlsStarterCallback> tlsStarter,
         kj::Own<kj::RefcountedWrapper<kj::Own<kj::AsyncIoStream>>> connStream,
-        kj::Promise<void> disconnectTask)
+        kj::Promise<void> disconnectTask,
+        kj::Maybe<kj::Promise<void>> connectTask = kj::none)
         : connectionStream(kj::mv(connStream)),
           watchForDisconnectTask(kj::mv(disconnectTask)),
-          tlsStarter(kj::mv(tlsStarter)) {}
+          tlsStarter(kj::mv(tlsStarter)),
+          connectTask(kj::mv(connectTask)) {}
   };
   kj::Maybe<IoOwn<ConnectionData>> connectionData;
 
@@ -251,7 +259,8 @@ jsg::Ref<Socket> setupSocket(jsg::Lock& js,
     SecureTransportKind secureTransport,
     kj::Maybe<kj::String> domain,
     bool isDefaultFetchPort,
-    kj::Maybe<jsg::PromiseResolverPair<SocketInfo>> maybeOpenedPrPair);
+    kj::Maybe<jsg::PromiseResolverPair<SocketInfo>> maybeOpenedPrPair,
+    kj::Maybe<kj::Promise<void>> connectTask = kj::none);
 
 jsg::Ref<Socket> connectImplNoOutputLock(jsg::Lock& js,
     kj::Maybe<jsg::Ref<Fetcher>> fetcher,

@@ -11,6 +11,7 @@
 #include <workerd/io/worker-interface.h>
 #include <workerd/jsg/exception.h>
 #include <workerd/jsg/url.h>
+#include <workerd/util/autogate.h>
 
 namespace workerd::api {
 
@@ -90,7 +91,8 @@ jsg::Ref<Socket> setupSocket(jsg::Lock& js,
     SecureTransportKind secureTransport,
     kj::Maybe<kj::String> domain,
     bool isDefaultFetchPort,
-    kj::Maybe<jsg::PromiseResolverPair<SocketInfo>> maybeOpenedPrPair) {
+    kj::Maybe<jsg::PromiseResolverPair<SocketInfo>> maybeOpenedPrPair,
+    kj::Maybe<kj::Promise<void>> connectTask) {
   auto& ioContext = IoContext::current();
 
   // Disconnection handling is annoyingly complicated:
@@ -173,7 +175,7 @@ jsg::Ref<Socket> setupSocket(jsg::Lock& js,
   auto result = js.alloc<Socket>(js, ioContext, kj::mv(refcountedConnection), kj::mv(remoteAddress),
       kj::mv(readable), kj::mv(writable), kj::mv(closedPrPair), kj::mv(watchForDisconnectTask),
       kj::mv(options), kj::mv(tlsStarter), secureTransport, kj::mv(domain), isDefaultFetchPort,
-      kj::mv(openedPrPair));
+      kj::mv(openedPrPair), kj::mv(connectTask));
 
   KJ_IF_SOME(p, eofPromise) {
     result->handleReadableEof(js, kj::mv(p));
@@ -256,25 +258,97 @@ jsg::Ref<Socket> connectImplNoOutputLock(jsg::Lock& js,
   }
   kj::Own<kj::TlsStarterCallback> tlsStarter = kj::heap<kj::TlsStarterCallback>();
   httpConnectSettings.tlsStarter = tlsStarter;
-  auto request = httpClient->connect(addressStr, *headers, httpConnectSettings);
-  request.connection = request.connection.attach(kj::mv(httpClient));
 
-  auto result = setupSocket(js, kj::mv(request.connection), kj::mv(addressStr), kj::mv(options),
-      kj::mv(tlsStarter), secureTransport, kj::mv(domain), isDefaultFetchPort,
-      kj::none /* maybeOpenedPrPair */);
-  // `handleProxyStatus` needs an initialized refcount to use `JSG_THIS`, hence it cannot be
-  // called in Socket's constructor. Also it's only necessary when creating a Socket as a result of
-  // a `connect`.
-  result->handleProxyStatus(js, kj::mv(request.status));
-  return result;
+  if (util::Autogate::isEnabled(util::AutogateKey::TCP_SOCKET_CONNECT_OUTPUT_GATE)) {
+    // Deferred-connect path: return a Socket backed by a promised stream immediately, deferring
+    // the actual httpClient->connect() until after the DO output gate clears. This prevents
+    // premature network output while storage writes are still pending.
+    //
+    // Two promise-fulfiller pairs bridge the deferred connect to the Socket:
+    //   connStreamPaf — fulfilled with the raw connection stream once connect() returns
+    //   statusPaf     — fulfilled with the proxy status once connect()'s status promise resolves
+    //
+    // The connect task is stored inside ConnectionData alongside tlsStarter. This ensures
+    // that if the Socket is GC'd (destroying ConnectionData), the connect task is cancelled
+    // before tlsStarter is destroyed, preventing a use-after-free on the TlsStarterCallback
+    // pointer embedded in httpConnectSettings.
+
+    // Promise-fulfiller for the raw connection stream.
+    auto connStreamPaf = kj::newPromiseAndFulfiller<kj::Own<kj::AsyncIoStream>>();
+    auto& connStreamFulfiller = *connStreamPaf.fulfiller;
+    auto deferredCancelStream = kj::defer([fulfiller = kj::mv(connStreamPaf.fulfiller)]() mutable {
+      fulfiller->reject(KJ_EXCEPTION(DISCONNECTED, "socket connect cancelled"));
+    });
+
+    // Promise-fulfiller for the proxy status.
+    auto statusPaf = kj::newPromiseAndFulfiller<kj::HttpClient::ConnectRequest::Status>();
+    auto& statusFulfiller = *statusPaf.fulfiller;
+    auto deferredCancelStatus = kj::defer([fulfiller = kj::mv(statusPaf.fulfiller)]() mutable {
+      fulfiller->reject(KJ_EXCEPTION(DISCONNECTED, "socket connect cancelled"));
+    });
+
+    // The connect task: waits for the output gate, performs the connect, then forwards results.
+    static auto constexpr doConnect =
+        [](IoContext& ioContext, kj::String addressStr, kj::HttpHeaders& headers,
+            kj::HttpConnectSettings httpConnectSettings, kj::Own<kj::HttpClient> httpClient,
+            kj::PromiseFulfiller<kj::Own<kj::AsyncIoStream>>& connFulfiller,
+            kj::PromiseFulfiller<kj::HttpClient::ConnectRequest::Status>& statusFulfiller)
+        -> kj::Promise<void> {
+      try {
+        co_await ioContext.waitForOutputLocks();
+        auto request = httpClient->connect(addressStr.asPtr(), headers, httpConnectSettings);
+        request.connection = request.connection.attach(kj::mv(httpClient));
+        connFulfiller.fulfill(kj::mv(request.connection));
+        statusFulfiller.fulfill(co_await kj::mv(request.status));
+      } catch (...) {
+        auto e = kj::getCaughtExceptionAsKj();
+        if (!connFulfiller.isWaiting()) {
+          // Connection was already fulfilled; only reject status.
+          statusFulfiller.reject(kj::mv(e));
+        } else {
+          connFulfiller.reject(kj::cp(e));
+          statusFulfiller.reject(kj::mv(e));
+        }
+      }
+    };
+
+    auto connectTaskPromise =
+        doConnect(ioContext, kj::str(addressStr), *headers, httpConnectSettings, kj::mv(httpClient),
+            connStreamFulfiller, statusFulfiller)
+            .attach(kj::mv(deferredCancelStream), kj::mv(deferredCancelStatus), kj::mv(headers));
+
+    auto result = setupSocket(js, kj::newPromisedStream(kj::mv(connStreamPaf.promise)),
+        kj::mv(addressStr), kj::mv(options), kj::mv(tlsStarter), secureTransport, kj::mv(domain),
+        isDefaultFetchPort, kj::none /* maybeOpenedPrPair */, kj::mv(connectTaskPromise));
+
+    // `handleProxyStatus` needs an initialized refcount to use `JSG_THIS`, hence it cannot be
+    // called in Socket's constructor. Also it's only necessary when creating a Socket as a result
+    // of a `connect`.
+    result->handleProxyStatus(js, kj::mv(statusPaf.promise));
+    return result;
+  } else {
+    // Original synchronous-connect path (no output gate wait).
+    auto request = httpClient->connect(addressStr, *headers, httpConnectSettings);
+    request.connection = request.connection.attach(kj::mv(httpClient));
+
+    auto result = setupSocket(js, kj::mv(request.connection), kj::mv(addressStr), kj::mv(options),
+        kj::mv(tlsStarter), secureTransport, kj::mv(domain), isDefaultFetchPort,
+        kj::none /* maybeOpenedPrPair */);
+    // `handleProxyStatus` needs an initialized refcount to use `JSG_THIS`, hence it cannot be
+    // called in Socket's constructor. Also it's only necessary when creating a Socket as a result
+    // of a `connect`.
+    result->handleProxyStatus(js, kj::mv(request.status));
+    return result;
+  }
 }
 
 jsg::Ref<Socket> connectImpl(jsg::Lock& js,
     kj::Maybe<jsg::Ref<Fetcher>> fetcher,
     AnySocketAddress address,
     jsg::Optional<SocketOptions> options) {
-  // TODO(soon): Doesn't this need to check for the presence of an output lock, and if it finds one
-  // then wait on it, before calling into connectImplNoOutputLock?
+  // When the TCP_SOCKET_CONNECT_OUTPUT_GATE autogate is enabled, the output gate wait is
+  // handled inside connectImplNoOutputLock via a deferred connect task, so no separate wait
+  // is needed here. TODO(cleanup): rename connectImplNoOutputLock once the autogate is removed.
   return connectImplNoOutputLock(js, kj::mv(fetcher), kj::mv(address), kj::mv(options));
 }
 

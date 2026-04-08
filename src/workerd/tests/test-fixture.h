@@ -29,6 +29,9 @@ struct TestFixture {
     // If true, use real timers instead of mock timers that never advance.
     // Requires waitScope to be kj::none (so that the fixture creates its own AsyncIoContext).
     bool useRealTimers;
+    // If set, used instead of the default DummyIoChannelFactory when creating incoming requests.
+    // The factory receives the TimerChannel reference.
+    kj::Maybe<kj::Function<kj::Own<IoChannelFactory>(TimerChannel&)>> ioChannelFactory;
   };
 
   TestFixture(SetupParams&& params = {.useRealTimers = false});
@@ -116,8 +119,37 @@ struct TestFixture {
   kj::Own<kj::TaskSet::ErrorHandler> errorHandler;
   kj::TaskSet waitUntilTasks;
   kj::Own<kj::HttpHeaderTable> headerTable;
+  kj::Maybe<kj::Function<kj::Own<IoChannelFactory>(TimerChannel&)>> ioChannelFactory;
 
   kj::Own<IoContext::IncomingRequest> createIncomingRequest();
+
+  // Default IoChannelFactory used by tests. Exposed in the header so tests can subclass it
+  // and override individual methods (e.g. startSubrequest for socket connect tests).
+  struct DummyIoChannelFactory: public IoChannelFactory {
+    DummyIoChannelFactory(TimerChannel& timer): timer(timer) {}
+
+    kj::Own<WorkerInterface> startSubrequest(uint channel, SubrequestMetadata metadata) override;
+    kj::Own<SubrequestChannel> getSubrequestChannel(uint channel,
+        kj::Maybe<Frankenvalue> props,
+        kj::Maybe<VersionRequest> versionRequest) override;
+    capnp::Capability::Client getCapability(uint channel) override;
+    kj::Own<CacheClient> getCache() override;
+    TimerChannel& getTimer() override;
+    kj::Promise<void> writeLogfwdr(
+        uint channel, kj::FunctionParam<void(capnp::AnyPointer::Builder)> buildMessage) override;
+    kj::Own<ActorChannel> getGlobalActor(uint channel,
+        const ActorIdFactory::ActorId& id,
+        kj::Maybe<kj::String> locationHint,
+        ActorGetMode mode,
+        bool enableReplicaRouting,
+        ActorRoutingMode routingMode,
+        SpanParent parentSpan,
+        kj::Maybe<ActorVersion> version) override;
+    kj::Own<ActorChannel> getColoLocalActor(
+        uint channel, kj::StringPtr id, SpanParent parentSpan) override;
+
+    TimerChannel& timer;
+  };
 };
 
 }  // namespace workerd
