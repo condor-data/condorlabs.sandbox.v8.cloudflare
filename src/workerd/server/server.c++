@@ -56,6 +56,10 @@
 #include <cstdlib>
 #include <ctime>
 
+#if _WIN32
+#include <thread>
+#endif
+
 namespace workerd::server {
 
 namespace {
@@ -2993,10 +2997,35 @@ class Server::WorkerService final: public Service,
       KJ_IF_SOME(as, actorStorage) {
         for (auto& entry: as.directory->listNames()) {
           if (!entry.startsWith("metadata.sqlite")) {
-            as.directory->remove(kj::Path({entry}));
+            removeActorFile(*as.directory, kj::Path({entry}));
           }
         }
       }
+    }
+
+    static void removeActorFile(const kj::Directory& dir, kj::Path path) {
+#if _WIN32
+      // On Windows, file handles may not be immediately released after sqlite3_close()
+      // completes. The native Windows SQLite VFS (used on Windows per the special-case in
+      // SqliteDatabase::init()) releases file handles via CloseHandle(), but the OS kernel
+      // may not fully relinquish the file before the next filesystem operation. This causes
+      // DeleteFileW() to fail with ERROR_SHARING_VIOLATION. Retry briefly to handle this.
+      // This is only called from deleteAllDurableObjects() which is a workerd:unsafe test API.
+      for (uint attempt = 0;; ++attempt) {
+        KJ_IF_SOME(exception, kj::runCatchingExceptions([&]() {
+          dir.remove(path);
+        })) {
+          if (attempt >= 10) {
+            kj::throwFatalException(kj::mv(exception));
+          }
+          std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        } else {
+          return;
+        }
+      }
+#else
+      dir.remove(path);
+#endif
     }
 
    private:
