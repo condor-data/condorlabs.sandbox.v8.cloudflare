@@ -34,11 +34,12 @@ include("//build/deps:gen/shared_deps.MODULE.bazel")
 
 # Must be loaded after automated dependencies
 include("//build/deps:rust.MODULE.bazel")
-single_version_override(
-    module_name = "rules_rs",
-    patches = ["//:patches/rules_rust/extra_aliased_targets.patch"],
-    patch_strip = 1,
-)
+
+# single_version_override(
+#    module_name = "rules_rs",
+#    patches = ["//:patches/rules_rust/extra_aliased_targets.patch"],
+#    patch_strip = 1,
+#)
 include("//build/deps:nodejs.MODULE.bazel")
 include("//build/deps:python.MODULE.bazel")
 include("//build/deps:v8.MODULE.bazel")
@@ -51,3 +52,11 @@ use_repo(compat, "cc_compatibility_proxy")
 
 cc_configure = use_extension("@rules_cc//cc:extensions.bzl", "cc_configure_extension")
 use_repo(cc_configure, "local_config_cc")
+
+bazel_dep(name = "protobuf", version = "34.1")
+
+# rules_go is not used by ourselves, but protobuf pulls in an outdated version that is missing
+# rules_cc symbols – can be dropped once protobuf uses more recent version. At least we can use
+# repo_name = None so that this is not visible to edgeworker itself and won't be pulled in if not
+# needed transitively.
+bazel_dep(name = "rules_go", version = "0.60.0", repo_name = None)

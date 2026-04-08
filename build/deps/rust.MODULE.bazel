@@ -11,7 +11,7 @@ RUST_TARGET_TRIPLES = [
 ]
 
 # rules_rust
-bazel_dep(name = "rules_rs", version = "0.0.42")
+bazel_dep(name = "rules_rs", version = "0.0.53")
 
 rules_rust = use_extension("@rules_rs//rs/experimental:rules_rust.bzl", "rules_rust")
 rules_rust.patch(
@@ -46,6 +46,14 @@ use_repo(rust, "rust_toolchains")
 
 register_toolchains("@rust_toolchains//:all")
 
+# works
+# bazel_dep(name = "rules_rust_prost", version = "0.69.0")
+# does not work
+rules_rust_prost = use_extension("@rules_rs//rs/experimental:rules_rust_prost.bzl", "rules_rust_prost")
+use_repo(rules_rust_prost, "rules_rust_prost")
+
+register_toolchains("@rules_rust_prost//:default_prost_toolchain")
+
 # rust-based lolhtml dependency, including the API header.
 # Presented as a separate repository to allow overrides.
 new_local_repository = use_repo_rule("@bazel_tools//tools/build_defs/repo:local.bzl", "new_local_repository")
@@ -68,9 +76,9 @@ crate = use_extension("@rules_rs//rs:extensions.bzl", "crate")
 crate.annotation(
     additive_build_file_content = """exports_files(["include/lol_html.h"])""",
     crate = "lol_html_c_api",
-    extra_aliased_targets = {
-        "lol_html_c_api_include_lol_html_h": "include/lol_html.h",
-    },
+    # extra_aliased_targets = {
+    #     "lol_html_c_api_include_lol_html_h": "include/lol_html.h",
+    # },
     strip_prefix = "c-api",
 )
 crate.annotation(
