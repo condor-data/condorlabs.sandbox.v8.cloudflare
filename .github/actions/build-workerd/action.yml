@@ -1,0 +1,190 @@
+name: "Build workerd (Bazel)"
+description: "Compila workerd completo via Bazel. Sem secrets da CF — cache local."
+
+inputs:
+  build_target:
+    description: "Bazel target (default: workerd server binary)"
+    required: false
+    default: "//src/workerd/server:workerd"
+  extra_bazel_args:
+    description: "Args extras para Bazel (ex: --config=asan)"
+    required: false
+    default: ""
+  run_tests:
+    description: "Rodar testes apos build"
+    required: false
+    default: "false"
+
+outputs:
+  workerd_path:
+    description: "Path do binario workerd compilado"
+    value: ${{ steps.build.outputs.WORKERD_PATH }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: "[GATE] Check resources for Bazel build"
+      shell: bash
+      run: |
+        echo "::group::Resource check (workerd-full)"
+        set -euo pipefail
+        AVAIL_KB=$(df . | tail -1 | awk '{print $4}')
+        AVAIL_GB=$((AVAIL_KB / 1024 / 1024))
+        RAM_GB=$(free -g | awk '/Mem:/{print $2}')
+
+        echo "Disco: ${AVAIL_GB}GB | RAM: ${RAM_GB}GB | CPUs: $(nproc)"
+
+        if [ "$AVAIL_GB" -lt 30 ]; then
+          echo "::endgroup::"
+          echo "::error::!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+          echo "::error::DISCO INSUFICIENTE: ${AVAIL_GB}GB (minimo 30GB)"
+          echo "::error::Workerd Bazel build requer ~30GB de disco."
+          echo "::error::!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+          exit 1
+        fi
+        if [ "$RAM_GB" -lt 10 ]; then
+          echo "::endgroup::"
+          echo "::error::RAM INSUFICIENTE: ${RAM_GB}GB (minimo 10GB)"
+          exit 1
+        fi
+        echo "Recursos OK para workerd-full"
+        echo "::endgroup::"
+
+    - name: "[SETUP] Install Bazel + dependencies"
+      shell: bash
+      run: |
+        echo "::group::Install Bazel"
+        set -euo pipefail
+
+        # Bazel version from .bazelversion
+        if [ -f .bazelversion ]; then
+          BAZEL_VERSION=$(cat .bazelversion | tr -d '[:space:]')
+          echo "Bazel version from .bazelversion: ${BAZEL_VERSION}"
+        else
+          echo "::error::.bazelversion NAO ENCONTRADO! Nao estamos na raiz do workerd?"
+          exit 1
+        fi
+
+        # Instalar Bazelisk (gerencia versoes do Bazel automaticamente)
+        if ! command -v bazel &>/dev/null; then
+          echo "Instalando Bazelisk..."
+          sudo wget -q -O /usr/local/bin/bazel \
+            "https://github.com/bazelbuild/bazelisk/releases/latest/download/bazelisk-linux-amd64"
+          sudo chmod +x /usr/local/bin/bazel
+        fi
+        bazel version 2>&1 | head -3
+
+        # Deps do build
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq libc++-dev libc++abi-dev lld
+
+        echo "::endgroup::"
+
+    - name: "[CACHE] Bazel disk cache"
+      uses: actions/cache@v5
+      with:
+        path: ~/bazel-disk-cache
+        key: bazel-workerd-${{ hashFiles('.bazelversion', '.bazelrc', 'MODULE.bazel') }}
+        # Sem restore-keys: Bazel cache cresce exponencialmente com restore parcial
+        # (apontado nos comentarios do template CF original)
+
+    - name: "[BUILD] Bazel build workerd"
+      id: build
+      shell: bash
+      run: |
+        echo "::group::Bazel build ${{ inputs.build_target }}"
+        set -euo pipefail
+
+        # Configurar cache local (sem remote cache — nao temos secrets da CF)
+        echo "build --disk_cache=~/bazel-disk-cache" >> .bazelrc.user
+
+        # Limitar jobs baseado na RAM disponivel (~2GB por job)
+        RAM_GB=$(free -g | awk '/Mem:/{print $2}')
+        MAX_JOBS=$((RAM_GB / 2))
+        [ "$MAX_JOBS" -lt 1 ] && MAX_JOBS=1
+        echo "build --jobs=${MAX_JOBS}" >> .bazelrc.user
+        echo "Bazel jobs: ${MAX_JOBS} (baseado em ${RAM_GB}GB RAM)"
+
+        # Build
+        bazel build \
+          --config=ci \
+          ${{ inputs.extra_bazel_args }} \
+          ${{ inputs.build_target }} 2>&1 || {
+          echo "::endgroup::"
+          echo "::error::!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+          echo "::error::BAZEL BUILD FALHOU!"
+          echo "::error::!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+          echo "::error::Verifique os logs acima para erros de compilacao."
+
+          # Mostrar uso de disco (debug)
+          echo "=== Disk usage ==="
+          df -h .
+          du -sh ~/bazel-disk-cache 2>/dev/null || echo "No cache"
+          BAZEL_OUT=$(bazel info output_base 2>/dev/null || echo "/tmp")
+          du -sh "$BAZEL_OUT" 2>/dev/null || echo "No output"
+
+          exit 1
+        }
+        echo "::endgroup::"
+
+        # Localizar binario
+        WORKERD_BIN=$(find bazel-bin/src/workerd/server -name "workerd" -type f 2>/dev/null | head -1)
+        if [ -z "$WORKERD_BIN" ]; then
+          echo "::error::Binario workerd NAO ENCONTRADO em bazel-bin!"
+          echo "::error::Procurando em: bazel-bin/src/workerd/server/"
+          find bazel-bin/src/workerd/ -type f -executable 2>/dev/null | head -10
+          exit 1
+        fi
+
+        echo "WORKERD_PATH=${WORKERD_BIN}" >> $GITHUB_OUTPUT
+        echo "Workerd binary: ${WORKERD_BIN} ($(du -sh "$WORKERD_BIN" | cut -f1))"
+
+    - name: "[TEST] Run workerd tests"
+      if: inputs.run_tests == 'true'
+      shell: bash
+      run: |
+        echo "::group::Bazel test"
+        bazel test \
+          --config=ci \
+          ${{ inputs.extra_bazel_args }} \
+          //src/workerd/... 2>&1 || {
+          echo "::endgroup::"
+          echo "::error::TESTES FALHARAM!"
+          exit 1
+        }
+        echo "::endgroup::"
+
+    - name: "[STATS] Build statistics"
+      if: always()
+      shell: bash
+      run: |
+        echo "::group::Build stats"
+        echo "=== Disco ==="
+        df -h .
+        echo "=== Bazel cache ==="
+        du -sh ~/bazel-disk-cache 2>/dev/null || echo "No cache"
+        echo "=== Bazel output ==="
+        BAZEL_OUT=$(bazel info output_base 2>/dev/null || echo "")
+        [ -n "$BAZEL_OUT" ] && du -sh "$BAZEL_OUT" || echo "No output"
+
+        # Trim large cache files (>100MB) como o template CF faz
+        if [ -d ~/bazel-disk-cache ]; then
+          find ~/bazel-disk-cache -size +100M -type f -delete 2>/dev/null || true
+          echo "=== Cache apos trim ==="
+          du -sh ~/bazel-disk-cache
+        fi
+        echo "::endgroup::"
+
+    - name: "[UPLOAD] Workerd binary"
+      if: steps.build.outcome == 'success'
+      uses: actions/upload-artifact@v7
+      with:
+        name: workerd-full-linux-x64
+        path: ${{ steps.build.outputs.WORKERD_PATH }}
+        retention-days: 90
+        if-no-files-found: error
+
+    - name: Bazel shutdown
+      if: always()
+      shell: bash
+      run: bazel shutdown 2>/dev/null || true

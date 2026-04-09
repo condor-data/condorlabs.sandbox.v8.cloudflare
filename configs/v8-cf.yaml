@@ -157,4 +157,44 @@ configs:
     last_build_version: null
     last_build_date: null
     d8_binary_size: null
+  # ===========================================================================
+  # WORKERD-FULL: Build completo via Bazel (runtime real do Workers)
+  # ===========================================================================
+
+  workerd-full:
+    description: "Workerd completo via Bazel (runtime real, ~45min, ~30GB disco)"
+    family: workerd
+    build_mode: bazel
+    bazel_target: "//src/workerd/server:workerd"
+    bazel_args: ""
+    run_tests: false
+    last_build_status: null
+    last_build_version: null
+    last_build_date: null
+    workerd_binary_size: null
+
+  workerd-asan:
+    description: "Workerd com ASAN via Bazel (UAF, buffer overflow)"
+    family: workerd
+    build_mode: bazel
+    bazel_target: "//src/workerd/server:workerd"
+    bazel_args: "--config=asan"
+    run_tests: false
+    last_build_status: null
+    last_build_version: null
+    last_build_date: null
+    workerd_binary_size: null
+
+  workerd-tsan:
+    description: "Workerd com TSAN via Bazel (data races — DefaultJobState UAF)"
+    family: workerd
+    build_mode: bazel
+    bazel_target: "//src/workerd/server:workerd"
+    bazel_args: "--config=tsan"
+    run_tests: false
+    last_build_status: null
+    last_build_version: null
+    last_build_date: null
+    workerd_binary_size: null
+
 last_build: '2026-04-09T23:42:53Z'

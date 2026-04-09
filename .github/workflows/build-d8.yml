@@ -20,6 +20,9 @@ on:
           - asan
           - tsan
           - ubsan
+          - workerd-full
+          - workerd-asan
+          - workerd-tsan
       build_mode:
         description: "d8-standalone (GN, ~15min) ou workerd-full (Bazel, ~45min, ~30GB disco)"
         required: true
@@ -88,12 +91,15 @@ jobs:
           echo "V8_BRANCH=${V8_BRANCH}" >> $GITHUB_OUTPUT
 
       - name: "Phase 1: Pre-validate"
+        if: inputs.build_mode == 'd8-standalone'
         uses: ./.github/actions/pre-validate
         with:
           yaml_file: configs/v8-cf.yaml
           config: ${{ inputs.v8_config }}
 
+      # ========== d8-standalone PATH (GN) ==========
       - name: "Phase 2: Setup V8"
+        if: inputs.build_mode == 'd8-standalone'
         uses: ./.github/actions/setup-v8
         with:
           v8_version: ${{ steps.version.outputs.V8_VERSION }}
@@ -101,16 +107,67 @@ jobs:
           config: ${{ inputs.v8_config }}
 
       - name: "Phase 3: Build d8"
-        id: build
+        if: inputs.build_mode == 'd8-standalone'
+        id: build-d8
         uses: ./.github/actions/build-d8
         with:
           config: ${{ inputs.v8_config }}
 
-      - name: "Phase 4: Post-validate"
-        if: always() && !cancelled()
+      - name: "Phase 4: Post-validate (d8)"
+        if: always() && !cancelled() && inputs.build_mode == 'd8-standalone'
         uses: ./.github/actions/post-validate
         with:
           yaml_file: configs/v8-cf.yaml
           config: ${{ inputs.v8_config }}
+          v8_version: ${{ steps.version.outputs.V8_VERSION }}
+          build_result: ${{ steps.build-d8.outcome }}
+
+      # ========== workerd-full PATH (Bazel) ==========
+      - name: "Phase 2-3: Build workerd (Bazel)"
+        if: inputs.build_mode == 'workerd-full'
+        id: build-workerd
+        uses: ./.github/actions/build-workerd
+        with:
+          build_target: "//src/workerd/server:workerd"
+          extra_bazel_args: ""
+          run_tests: "false"
+
+      - name: "Phase 4: Post-validate (workerd)"
+        if: always() && !cancelled() && inputs.build_mode == 'workerd-full'
+        shell: bash
+        run: |
+          echo "::group::Post-validate workerd"
+          WORKERD="${{ steps.build-workerd.outputs.workerd_path }}"
+
+          if [ -z "$WORKERD" ] || [ ! -f "$WORKERD" ]; then
+            echo "::error::Workerd binary NAO ENCONTRADO!"
+            echo "::error::Build pode ter falhado. Verifique Phase 2-3."
+            exit 1
+          fi
+
+          echo "=== Workerd binary ==="
+          file "$WORKERD"
+          du -sh "$WORKERD"
+
+          echo "=== Workerd version ==="
+          "$WORKERD" --version 2>&1 || echo "::warning::--version nao suportado"
+
+          echo "=== Workerd basic test ==="
+          timeout 5 "$WORKERD" --help 2>&1 | head -20 || echo "::warning::--help falhou ou timeout"
+
+          echo "::endgroup::"
+
+          # Update YAML status
+          pip3 install pyyaml 2>/dev/null
+          python3 configs/verify-build.py update-status configs/v8-cf.yaml workerd-full \
+            "${{ steps.build-workerd.outcome }}" \
+            "${{ steps.version.outputs.V8_VERSION }}" \
+            "$(du -sh "$WORKERD" 2>/dev/null | cut -f1 || echo unknown)"
+
+          git config user.name "condor-data-bot"
+          git config user.email "bot@condor-data.github.io"
+          git add configs/v8-cf.yaml
+          git commit -m "build-status: workerd-full = ${{ steps.build-workerd.outcome }}" || true
+          git push || echo "::warning::Push failed"
           v8_version: ${{ steps.version.outputs.V8_VERSION }}
           build_result: ${{ steps.build.outcome }}
