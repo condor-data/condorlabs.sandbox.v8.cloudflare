@@ -2976,10 +2976,10 @@ class Server::WorkerService final: public Service,
       actors.clear();
     }
 
-    // Aborts all actors, cancels all alarms, and clears all underlying storage so that
+    // Aborts all actors, cancels all alarms, and deletes all underlying storage files so that
     // DOs can be recreated with completely clean state. Useful for test isolation.
     void deleteAll(kj::Maybe<const kj::Exception&> reason) {
-      // Abort all running actors so they release their SQLite connections.
+      // Abort all running actors so they release their file handles.
       abortAll(reason);
 
       // Cancel all pending alarms (in-memory tasks + persistent DB rows).
@@ -2987,21 +2987,13 @@ class Server::WorkerService final: public Service,
         scheduler->deleteAll();
       }
 
-      // Clear per-actor storage by truncating each database file to zero bytes. When the
-      // next actor opens the same path, SQLite sees a zero-length file and creates a fresh
-      // database. We truncate instead of deleting because on Windows the native SQLite VFS
-      // opens files without FILE_SHARE_DELETE, so DeleteFileW() can fail with
-      // ERROR_SHARING_VIOLATION if the OS has not yet fully released the handle after
-      // sqlite3_close(). Truncation does not require delete access.
-      // Skip metadata.sqlite (and its WAL/journal companions) because the AlarmScheduler
-      // still has it open — its rows were already wiped by deleteAll() above.
+      // Delete per-actor storage files from disk. Skip metadata.sqlite (and its WAL/journal
+      // companions) because the AlarmScheduler still has it open — its rows were already
+      // wiped by deleteAll() above.
       KJ_IF_SOME(as, actorStorage) {
         for (auto& entry: as.directory->listNames()) {
           if (!entry.startsWith("metadata.sqlite")) {
-            auto path = kj::Path({entry});
-            KJ_IF_SOME(file, as.directory->tryOpenFile(path, kj::WriteMode::MODIFY)) {
-              file->truncate(0);
-            }
+            as.directory->remove(kj::Path({entry}));
           }
         }
       }
