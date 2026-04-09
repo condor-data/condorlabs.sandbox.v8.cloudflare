@@ -1,0 +1,38 @@
+# =============================================================================
+# lol-html Build Configurations — Cargo (Rust parser standalone)
+# =============================================================================
+# Para debug dos null byte mXSS bypasses no parser Rust.
+
+target: lol-html
+repo: "https://github.com/cloudflare/lol-html.git"
+commit: "e3aa54798602dd27250fafde1b5a66f080046252"  # versao do workerd
+version_in_workerd: "2.7.2"
+
+configs:
+  debug:
+    description: "Debug build — sem otimizacao, full symbols"
+    cargo_args: "build"
+    rustflags: ""
+    last_build_status: null
+    last_build_date: null
+
+  release:
+    description: "Release build — otimizado"
+    cargo_args: "build --release"
+    rustflags: ""
+    last_build_status: null
+    last_build_date: null
+
+  asan:
+    description: "Address Sanitizer — requer nightly toolchain"
+    cargo_args: "+nightly build --target x86_64-unknown-linux-gnu"
+    rustflags: "-Z sanitizer=address"
+    last_build_status: null
+    last_build_date: null
+
+  test:
+    description: "Rodar testes unitarios do lol-html"
+    cargo_args: "test"
+    rustflags: ""
+    last_build_status: null
+    last_build_date: null

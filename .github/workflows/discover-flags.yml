@@ -1,0 +1,168 @@
+###############################################################################
+# Discover V8 flags — gera referencia de TODAS as GN args e runtime flags
+#
+# Ciclo: Discovery → gera reference/ → humano compara → edita configs/*.yaml
+#
+# Trigger: APENAS manual
+# Secrets: ZERO
+# Custo: $0
+###############################################################################
+name: "Discover V8 flags (reference update)"
+
+on:
+  workflow_dispatch:
+    inputs:
+      v8_version:
+        description: "V8 version (vazio = auto-detect Cloudflare workerd)"
+        required: false
+        default: ""
+        type: string
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Detect V8 version
+        id: version
+        run: |
+          set -euo pipefail
+          if [ -n "${{ inputs.v8_version }}" ]; then
+            V8_VER="${{ inputs.v8_version }}"
+          else
+            STABLE_BRANCH=$(curl -sf 'https://chromiumdash.appspot.com/fetch_milestones' | \
+              python3 -c "import json,sys;[print(m['v8_branch']) for m in json.load(sys.stdin) if m.get('schedule_phase')=='stable' and m.get('schedule_active')]" | head -1)
+            [ -z "$STABLE_BRANCH" ] && { echo "::error::Falha ao detectar branch!"; exit 1; }
+            V8_VER=$(git ls-remote --tags https://chromium.googlesource.com/v8/v8.git "${STABLE_BRANCH}.*" | \
+              awk '{print $2}' | sed 's|refs/tags/||' | sort -V | tail -1)
+            [ -z "$V8_VER" ] && { echo "::error::Nenhuma tag!"; exit 1; }
+          fi
+          echo "V8_VERSION=${V8_VER}" >> $GITHUB_OUTPUT
+          V8_BRANCH="branch-heads/$(echo $V8_VER | cut -d. -f1,2)"
+          echo "V8_BRANCH=${V8_BRANCH}" >> $GITHUB_OUTPUT
+          echo "::notice::V8 ${V8_VER} (branch ${V8_BRANCH})"
+
+      - name: Install deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ninja-build python3 python3-pip
+          pip3 install pyyaml
+
+      - name: Cache depot_tools
+        uses: actions/cache@v4
+        with:
+          path: depot_tools
+          key: depot-tools-v1
+
+      - name: Setup depot_tools
+        run: |
+          if [ ! -d depot_tools ]; then
+            git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git
+          fi
+          echo "$PWD/depot_tools" >> $GITHUB_PATH
+
+      - name: Fetch V8 ${{ steps.version.outputs.V8_VERSION }}
+        run: |
+          set -euo pipefail
+          V8_VERSION="${{ steps.version.outputs.V8_VERSION }}"
+          V8_BRANCH="${{ steps.version.outputs.V8_BRANCH }}"
+          mkdir -p v8-build && cd v8-build
+          [ ! -d v8 ] && fetch v8
+          cd v8
+          git fetch --tags origin
+          git fetch origin "${V8_BRANCH}"
+          git checkout "${V8_VERSION}" 2>/dev/null || git checkout "tags/${V8_VERSION}" 2>/dev/null || git checkout "${V8_BRANCH}"
+          gclient sync --with_branch_heads --with_tags -D
+
+      - name: Build minimal d8 for discovery
+        run: |
+          cd v8-build/v8
+          mkdir -p out/discovery
+          cat > out/discovery/args.gn << 'EOF'
+          is_debug = false
+          v8_enable_sandbox = true
+          v8_enable_memory_corruption_api = true
+          target_cpu = "x64"
+          symbol_level = 0
+          is_component_build = false
+          treat_warnings_as_errors = false
+          EOF
+          gn gen out/discovery
+          autoninja -C out/discovery d8
+
+      - name: Dump GN args reference
+        run: |
+          cd v8-build/v8
+          echo "# V8 GN args reference — V8 ${{ steps.version.outputs.V8_VERSION }}" > ../../configs/reference/v8-gn-args-all.txt
+          echo "# Generated: $(date -u '+%Y-%m-%dT%H:%M:%SZ')" >> ../../configs/reference/v8-gn-args-all.txt
+          echo "" >> ../../configs/reference/v8-gn-args-all.txt
+          gn args --list out/discovery >> ../../configs/reference/v8-gn-args-all.txt
+
+      - name: Dump d8 runtime flags reference
+        run: |
+          cd v8-build/v8
+          echo "# d8 runtime flags — V8 ${{ steps.version.outputs.V8_VERSION }}" > ../../configs/reference/v8-runtime-flags.txt
+          echo "# Generated: $(date -u '+%Y-%m-%dT%H:%M:%SZ')" >> ../../configs/reference/v8-runtime-flags.txt
+          echo "" >> ../../configs/reference/v8-runtime-flags.txt
+          ./out/discovery/d8 --help >> ../../configs/reference/v8-runtime-flags.txt 2>&1 || true
+
+      - name: Dump Sandbox API reference
+        run: |
+          cd v8-build/v8
+          echo "# Sandbox Memory Corruption API — V8 ${{ steps.version.outputs.V8_VERSION }}" > ../../configs/reference/v8-sandbox-api.txt
+          echo "# Generated: $(date -u '+%Y-%m-%dT%H:%M:%SZ')" >> ../../configs/reference/v8-sandbox-api.txt
+          echo "" >> ../../configs/reference/v8-sandbox-api.txt
+          ./out/discovery/d8 --sandbox-testing -e "
+            print('=== Sandbox object properties ===');
+            for (let k of Object.getOwnPropertyNames(Sandbox).sort()) {
+              let desc = Object.getOwnPropertyDescriptor(Sandbox, k);
+              let type = typeof Sandbox[k];
+              let info = type;
+              if (desc.get) info = 'getter -> ' + type;
+              if (type === 'function') {
+                try { info = 'function(' + Sandbox[k].length + ' args)'; } catch(e) {}
+              }
+              print('  ' + k + ': ' + info);
+            }
+          " >> ../../configs/reference/v8-sandbox-api.txt 2>&1
+
+      - name: Show diff from previous reference
+        run: |
+          cd configs/reference
+          git diff --stat . || echo "No previous reference to diff"
+          echo "---"
+          git diff . | head -100 || true
+
+      - name: Update YAML last_discovery
+        run: |
+          python3 -c "
+          import yaml
+          for yf in ['configs/v8-cf.yaml']:
+              with open(yf) as f:
+                  cfg = yaml.safe_load(f)
+              cfg['last_detected_version'] = '${{ steps.version.outputs.V8_VERSION }}'
+              cfg['last_discovery'] = '$(date -u +%Y-%m-%dT%H:%M:%SZ)'
+              with open(yf, 'w') as f:
+                  yaml.dump(cfg, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+          print('YAML updated')
+          "
+
+      - name: Commit reference files
+        run: |
+          git config user.name "condor-data-bot"
+          git config user.email "bot@condor-data.github.io"
+          git add configs/reference/ configs/v8-cf.yaml
+          git diff --cached --stat
+          git commit -m "Update V8 flag reference (${{ steps.version.outputs.V8_VERSION }})" || echo "No changes to commit"
+          git push
+
+      - name: Upload reference as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: v8-reference-${{ steps.version.outputs.V8_VERSION }}
+          path: configs/reference/
+          retention-days: 90

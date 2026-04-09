@@ -167,112 +167,29 @@ jobs:
             exit 1
           }
 
-      - name: Generate args.gn (${{ inputs.v8_config }})
+      - name: Install PyYAML
+        run: pip3 install pyyaml
+
+      - name: Validate YAML config
+        run: |
+          set -euo pipefail
+          CONFIG="${{ inputs.v8_config }}"
+          python3 configs/yaml2gn.py configs/v8-cf.yaml "$CONFIG" --validate || {
+            echo "::error::YAML VALIDATION FAILED!"
+            exit 1
+          }
+
+      - name: Generate args.gn from YAML (${{ inputs.v8_config }})
         run: |
           set -euo pipefail
           CONFIG="${{ inputs.v8_config }}"
           OUT="v8-build/v8/out/d8-${CONFIG}"
           mkdir -p "$OUT"
-
-          # DUAS BASES: sanitizer (sem memory_corruption_api) vs sandbox (com)
-          case "$CONFIG" in
-            asan|tsan|ubsan)
-              cat > "$OUT/args.gn" << 'SANEOF'
-          v8_enable_sandbox = true
-          v8_enable_memory_corruption_api = false
-          target_cpu = "x64"
-          treat_warnings_as_errors = false
-          cc_wrapper = "env CCACHE_SLOPPINESS=time_macros ccache"
-          SANEOF
-              ;;
-            *)
-              cat > "$OUT/args.gn" << 'SBXEOF'
-          v8_enable_sandbox = true
-          v8_enable_memory_corruption_api = true
-          target_cpu = "x64"
-          is_asan = false
-          treat_warnings_as_errors = false
-          cc_wrapper = "env CCACHE_SLOPPINESS=time_macros ccache"
-          SBXEOF
-              ;;
-          esac
-
-          case "$CONFIG" in
-            fast)
-              cat >> "$OUT/args.gn" << 'EOF'
-          is_debug = false
-          dcheck_always_on = true
-          is_component_build = true
-          symbol_level = 1
-          v8_enable_backtrace = true
-          v8_enable_disassembler = true
-          v8_enable_object_print = true
-          EOF
-              ;;
-            fuzz)
-              cat >> "$OUT/args.gn" << 'EOF'
-          is_debug = false
-          dcheck_always_on = true
-          is_component_build = false
-          symbol_level = 0
-          EOF
-              ;;
-            debug)
-              cat >> "$OUT/args.gn" << 'EOF'
-          is_debug = true
-          v8_optimized_debug = false
-          v8_no_inline = true
-          dcheck_always_on = true
-          is_component_build = false
-          symbol_level = 2
-          v8_enable_backtrace = true
-          v8_enable_disassembler = true
-          v8_enable_object_print = true
-          v8_enable_verify_heap = true
-          EOF
-              ;;
-            release)
-              cat >> "$OUT/args.gn" << 'EOF'
-          is_debug = false
-          dcheck_always_on = false
-          is_component_build = false
-          symbol_level = 0
-          EOF
-              ;;
-            asan)
-              cat >> "$OUT/args.gn" << 'EOF'
-          is_asan = true
-          is_debug = false
-          dcheck_always_on = true
-          is_component_build = false
-          symbol_level = 1
-          v8_enable_backtrace = true
-          EOF
-              ;;
-            tsan)
-              cat >> "$OUT/args.gn" << 'EOF'
-          is_tsan = true
-          is_debug = false
-          dcheck_always_on = true
-          is_component_build = false
-          symbol_level = 1
-          v8_enable_backtrace = true
-          EOF
-              ;;
-            ubsan)
-              cat >> "$OUT/args.gn" << 'EOF'
-          is_ubsan = true
-          is_ubsan_vptr = true
-          is_debug = false
-          dcheck_always_on = true
-          is_component_build = false
-          symbol_level = 1
-          v8_enable_backtrace = true
-          EOF
-              ;;
-          esac
-
-          echo "=== Generated args.gn ==="
+          python3 configs/yaml2gn.py configs/v8-cf.yaml "$CONFIG" > "$OUT/args.gn" || {
+            echo "::error::yaml2gn.py FALHOU!"
+            exit 1
+          }
+          echo "=== Generated args.gn (from YAML) ==="
           cat "$OUT/args.gn"
 
       - name: Build d8
