@@ -336,12 +336,12 @@ declare namespace CloudflareWorkersModule {
     do<T extends Rpc.Serializable<T>>(
       name: string,
       callback: (ctx: WorkflowStepContext) => Promise<T>
-    ): StepPromise<T>;
+    ): Promise<T>;
     do<T extends Rpc.Serializable<T>>(
       name: string,
       config: WorkflowStepConfig,
       callback: (ctx: WorkflowStepContext) => Promise<T>
-    ): StepPromise<T>;
+    ): Promise<T>;
     sleep: (name: string, duration: WorkflowSleepDuration) => Promise<void>;
     sleepUntil: (name: string, timestamp: Date | number) => Promise<void>;
     waitForEvent<T extends Rpc.Serializable<T>>(
@@ -350,7 +350,7 @@ declare namespace CloudflareWorkersModule {
         type: string;
         timeout?: WorkflowTimeoutDuration | number;
       }
-    ): StepPromise<WorkflowStepEvent<T>>;
+    ): Promise<WorkflowStepEvent<T>>;
   }
 
   export type WorkflowInstanceStatus =

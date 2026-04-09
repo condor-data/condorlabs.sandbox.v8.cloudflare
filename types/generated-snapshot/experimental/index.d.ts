@@ -3937,23 +3937,28 @@ interface ExecOutput {
   readonly stdout: ArrayBuffer;
   readonly stderr: ArrayBuffer;
   readonly exitCode: number;
+  readonly __stdoutp: ArrayBuffer;
+  readonly __stderrp: ArrayBuffer;
 }
 interface ContainerExecOptions {
   cwd?: string;
   env?: Record<string, string>;
   user?: string;
-  stdin?: ReadableStream | "pipe";
-  stdout?: "pipe" | "ignore";
-  stderr?: "pipe" | "ignore" | "combined";
+  __stdinp?: ReadableStream | "pipe";
+  __stdoutp?: "pipe" | "ignore";
+  __stderrp?: "pipe" | "ignore" | "combined";
 }
 interface ExecProcess {
-  readonly stdin: WritableStream | null;
-  readonly stdout: ReadableStream | null;
-  readonly stderr: ReadableStream | null;
+  get stdin(): WritableStream | undefined;
+  get stdout(): ReadableStream | undefined;
+  get stderr(): ReadableStream | undefined;
   readonly pid: number;
   readonly exitCode: Promise<number>;
   output(): Promise<ExecOutput>;
   kill(signal?: number): void;
+  readonly __stdinp: WritableStream | null;
+  readonly __stdoutp: ReadableStream | null;
+  readonly __stderrp: ReadableStream | null;
 }
 interface Container {
   get running(): boolean;
@@ -13761,6 +13766,18 @@ declare namespace CloudflareWorkersModule {
   export type WorkflowStepContext = {
     attempt: number;
   };
+  export interface RollbackContext<T> {
+    error: Error;
+    output: NonNullable<T> | undefined;
+    stepName: string;
+  }
+  export interface StepPromise<T> extends Promise<T> {
+    rollback(fn: (ctx: RollbackContext<T>) => Promise<void>): StepPromise<T>;
+    rollback(
+      config: WorkflowStepConfig,
+      fn: (ctx: RollbackContext<T>) => Promise<void>,
+    ): StepPromise<T>;
+  }
   export abstract class WorkflowStep {
     do<T extends Rpc.Serializable<T>>(
       name: string,
