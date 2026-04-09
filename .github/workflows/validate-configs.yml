@@ -85,25 +85,35 @@ jobs:
       # ================================================================
       # TESTE 3: Regras de integridade (yaml2gn --validate)
       # ================================================================
-      - name: "[3/6] Integrity validation (yaml2gn.py)"
+      - name: "[3/6] Integrity validation (yaml2gn.py --validate)"
         run: |
           set -euo pipefail
           for f in configs/v8-*.yaml; do
             echo "=== $f ==="
             python3 -c "
-          import yaml
+          import yaml, sys
           with open('$f') as fh:
               cfg = yaml.safe_load(fh)
-          for name, config in cfg.get('configs', {}).items():
-              print(f'  Validating {name}...', end=' ')
-              # Importar e rodar validacao do yaml2gn
-              exec(open('configs/yaml2gn.py').read())
-              errors = validate_config(name, config)
-              if errors:
-                  for e in errors:
-                      print(f'\n    ERROR: {e}')
-                  raise SystemExit(1)
-              print('OK')
+          for name in cfg.get('configs', {}).keys():
+              print(f'  {name}...', end=' ', flush=True)
+          "
+            # Usar yaml2gn.py --validate para cada config (sem exec hack)
+            python3 -c "
+          import yaml, subprocess, sys
+          with open('$f') as fh:
+              cfg = yaml.safe_load(fh)
+          failed = False
+          for name in cfg.get('configs', {}).keys():
+              result = subprocess.run(['python3', 'configs/yaml2gn.py', '$f', name, '--validate'],
+                                      capture_output=True, text=True)
+              if result.returncode != 0:
+                  print(f'  {name}: FAIL')
+                  print(f'    {result.stderr.strip()}')
+                  failed = True
+              else:
+                  print(f'  {name}: OK')
+          if failed:
+              sys.exit(1)
           "
           done
           echo "::notice::Todas as validacoes de integridade passaram"
