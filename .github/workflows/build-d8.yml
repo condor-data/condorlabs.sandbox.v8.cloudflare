@@ -301,4 +301,3 @@ jobs:
           path: /tmp/coredumps/
           retention-days: 30
           if-no-files-found: ignore
-          if-no-files-found: ignore
