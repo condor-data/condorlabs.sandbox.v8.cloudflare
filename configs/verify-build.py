@@ -341,6 +341,200 @@ def cmd_post(yaml_path: str, config_name: str, d8_path: str):
 
 
 # =============================================================================
+# INTROSPECT: Descobre flags REAIS do binario compilado
+# =============================================================================
+def cmd_introspect(yaml_path: str, config_name: str, d8_path: str, build_dir: str):
+    """Extrai flags reais do binario e compara com YAML.
+
+    Usa 4 fontes de verdade:
+    1. gn args --list --overrides-only  (flags GN custom)
+    2. gn desc //v8:d8 defines          (preprocessor defines reais)
+    3. nm d8 | grep __*san_init         (sanitizers no binario)
+    4. runtime-probe.js no d8           (flags ativas em runtime)
+
+    Output: JSON report salvo em configs/reference/
+    """
+    _, _, config, merged = load_config(yaml_path, config_name)
+    family = config.get("family", "unknown")
+    errors = []
+    report = {"config": config_name, "family": family, "sources": {}}
+
+    print(f"=== INTROSPECT: {config_name} ===")
+    print(f"  d8: {d8_path}")
+    print(f"  build_dir: {build_dir}")
+    print()
+
+    # --- SOURCE 1: gn args --overrides-only ---
+    print("[1/4] gn args --overrides-only...")
+    r = subprocess.run(["gn", "args", "--list", "--overrides-only", "--short", build_dir],
+                       capture_output=True, text=True, timeout=30)
+    if r.returncode == 0:
+        gn_overrides = {}
+        for line in r.stdout.strip().split("\n"):
+            if "=" in line:
+                k, v = line.split("=", 1)
+                gn_overrides[k.strip()] = v.strip().strip('"')
+        report["sources"]["gn_overrides"] = gn_overrides
+        print(f"  {len(gn_overrides)} overrides detectados")
+        for k, v in gn_overrides.items():
+            yaml_val = gn_value(merged.get(k, "NOT_IN_YAML"))
+            match = "OK" if str(v) == yaml_val.strip('"') else "DIVERGE"
+            print(f"  {match}: {k} = {v} (YAML: {yaml_val})")
+            if match == "DIVERGE":
+                errors.append(f"gn override {k}={v} diverge do YAML ({yaml_val})")
+    else:
+        print(f"  WARN: gn args falhou (gn nao no PATH?)")
+        report["sources"]["gn_overrides"] = {"error": r.stderr[:200]}
+
+    # --- SOURCE 2: gn desc defines ---
+    print()
+    print("[2/4] gn desc //v8:d8 defines...")
+    r = subprocess.run(["gn", "desc", build_dir, "//v8:d8", "defines"],
+                       capture_output=True, text=True, timeout=30)
+    if r.returncode == 0:
+        defines = [d.strip() for d in r.stdout.strip().split("\n") if d.strip()]
+        report["sources"]["gn_defines"] = defines
+
+        # Verificar defines esperados baseado no YAML
+        checks = {
+            "V8_ENABLE_SANDBOX": merged.get("v8_enable_sandbox", True),
+            "DCHECK_ALWAYS_ON": merged.get("dcheck_always_on", False),
+        }
+        if merged.get("v8_enable_memory_corruption_api"):
+            checks["V8_ENABLE_MEMORY_CORRUPTION_API"] = True
+
+        for define, expected in checks.items():
+            present = any(define in d for d in defines)
+            if expected and not present:
+                print(f"  FALTANDO: {define} (YAML espera ativo)")
+                errors.append(f"Define {define} ausente mas YAML espera ativo")
+            elif not expected and present:
+                print(f"  INESPERADO: {define} presente (YAML nao pede)")
+                errors.append(f"Define {define} presente mas YAML nao pede")
+            elif expected and present:
+                print(f"  OK: {define} presente (como YAML pede)")
+            else:
+                print(f"  OK: {define} ausente (como YAML pede)")
+    else:
+        print(f"  WARN: gn desc falhou")
+        report["sources"]["gn_defines"] = {"error": r.stderr[:200]}
+
+    # --- SOURCE 3: nm (sanitizer symbols) ---
+    print()
+    print("[3/4] Binary sanitizer symbols (nm)...")
+    sanitizers_found = {}
+    for san_name, san_sym in [("asan", "__asan_init"), ("tsan", "__tsan_init"), ("ubsan", "__ubsan_handle")]:
+        r = subprocess.run(["nm", d8_path], capture_output=True, text=True, timeout=30)
+        count = r.stdout.count(san_sym) if r.returncode == 0 else 0
+        sanitizers_found[san_name] = count > 0
+
+        expected = merged.get(f"is_{san_name}", False)
+        if expected and count == 0:
+            print(f"  ERRO: {san_name} esperado (YAML) mas NAO encontrado no binario!")
+            errors.append(f"{san_name} ausente no binario mas YAML pede is_{san_name}=true")
+        elif not expected and count > 0:
+            print(f"  ERRO: {san_name} encontrado no binario mas YAML nao pede!")
+            errors.append(f"{san_name} presente no binario mas YAML diz is_{san_name}=false")
+        elif expected:
+            print(f"  OK: {san_name} presente (como YAML pede)")
+        else:
+            print(f"  OK: {san_name} ausente (como YAML pede)")
+
+    report["sources"]["binary_sanitizers"] = sanitizers_found
+
+    # --- SOURCE 4: runtime-probe.js ---
+    print()
+    print("[4/4] Runtime probe (d8 + runtime-probe.js)...")
+    probe_js = os.path.join(os.path.dirname(yaml_path), "runtime-probe.js")
+    if not os.path.exists(probe_js):
+        print(f"  WARN: {probe_js} nao encontrado, pulando runtime probe")
+        report["sources"]["runtime_probe"] = {"error": "file not found"}
+    else:
+        runtime_flags = ["--allow-natives-syntax"]
+        if family == "sandbox":
+            runtime_flags.append("--sandbox-testing")
+        if config.get("runtime_flags"):
+            for f in config["runtime_flags"]:
+                if f not in runtime_flags and f.startswith("--"):
+                    # Evitar flags que alteram comportamento (trace, print)
+                    if "trace" not in f and "print" not in f:
+                        runtime_flags.append(f)
+
+        r = subprocess.run([d8_path] + runtime_flags + [probe_js],
+                          capture_output=True, text=True, timeout=15)
+
+        if r.returncode == 0 and "RUNTIME_PROBE_JSON_START" in r.stdout:
+            # Extrair JSON do output
+            lines = r.stdout.split("\n")
+            json_start = lines.index("RUNTIME_PROBE_JSON_START") + 1
+            json_end = lines.index("RUNTIME_PROBE_JSON_END")
+            probe_json = json.loads("\n".join(lines[json_start:json_end]))
+            report["sources"]["runtime_probe"] = probe_json
+
+            # Verificar Sandbox API
+            if family == "sandbox" and not probe_json.get("build", {}).get("sandbox_api"):
+                print(f"  ERRO: Sandbox API nao detectada em runtime (family=sandbox)!")
+                errors.append("Sandbox API ausente em runtime")
+            elif family == "sanitizer" and probe_json.get("build", {}).get("sandbox_api"):
+                print(f"  ERRO: Sandbox API detectada em runtime (family=sanitizer)!")
+                errors.append("Sandbox API presente em sanitizer build")
+            else:
+                print(f"  OK: Sandbox API = {probe_json.get('build', {}).get('sandbox_api')}")
+
+            # verify_heap
+            yaml_vh = merged.get("v8_enable_verify_heap", False)
+            probe_vh = probe_json.get("build", {}).get("verify_heap", False)
+            if yaml_vh and not probe_vh:
+                print(f"  ERRO: verify_heap esperado mas NAO ativo em runtime!")
+                errors.append("verify_heap ausente em runtime")
+            elif yaml_vh and probe_vh:
+                print(f"  OK: verify_heap ativo (como YAML pede)")
+            else:
+                print(f"  OK: verify_heap = {probe_vh}")
+
+            # Compilers
+            for comp in ["turbofan", "sparkplug", "maglev"]:
+                val = probe_json.get("compilers", {}).get(comp)
+                if val is not None:
+                    print(f"  INFO: {comp} = {val}")
+
+            # Sandbox API methods
+            methods = probe_json.get("sandbox_api_methods", [])
+            if methods:
+                print(f"  Sandbox API: {len(methods)} methods")
+                for m in methods:
+                    print(f"    {m['name']}: {m['type']}")
+        else:
+            print(f"  WARN: runtime probe falhou (exit={r.returncode})")
+            if r.stderr:
+                print(f"  stderr: {r.stderr[:200]}")
+            report["sources"]["runtime_probe"] = {"error": f"exit {r.returncode}", "stderr": r.stderr[:500]}
+
+    # --- RESULTADO ---
+    print()
+    if errors:
+        for e in errors:
+            print(f"  ERRO: {e}")
+        print(f"\nINTROSPECT: FAILED — {len(errors)} divergencias entre binario e YAML!")
+        # Salvar report mesmo com erros
+        _save_introspect_report(yaml_path, config_name, report)
+        sys.exit(1)
+    else:
+        print(f"INTROSPECT: PASSED — binario corresponde ao YAML")
+        _save_introspect_report(yaml_path, config_name, report)
+
+
+def _save_introspect_report(yaml_path: str, config_name: str, report: dict):
+    """Salva report de introspeccao em configs/reference/."""
+    ref_dir = os.path.join(os.path.dirname(yaml_path), "reference")
+    os.makedirs(ref_dir, exist_ok=True)
+    report_path = os.path.join(ref_dir, f"introspect-{config_name}.json")
+    with open(report_path, "w") as f:
+        json.dump(report, f, indent=2, default=str)
+    print(f"  Report salvo: {report_path}")
+
+
+# =============================================================================
 # UPDATE-STATUS: Grava resultado no YAML
 # =============================================================================
 def cmd_update_status(yaml_path: str, config_name: str, status: str,
@@ -382,22 +576,28 @@ def main():
         cmd_pre(yaml_path, config_name)
     elif cmd == "verify-args":
         if len(sys.argv) < 5:
-            print("Falta: path do args.gn", file=sys.stderr)
+            print("ERRO: Falta argumento: path do args.gn", file=sys.stderr)
             sys.exit(1)
         cmd_verify_args(yaml_path, config_name, sys.argv[4])
     elif cmd == "post":
         if len(sys.argv) < 5:
-            print("Falta: path do d8", file=sys.stderr)
+            print("ERRO: Falta argumento: path do d8", file=sys.stderr)
             sys.exit(1)
         cmd_post(yaml_path, config_name, sys.argv[4])
+    elif cmd == "introspect":
+        if len(sys.argv) < 6:
+            print("ERRO: Falta argumentos: path do d8 e build_dir", file=sys.stderr)
+            print("Uso: introspect <yaml> <config> <d8_path> <build_dir>", file=sys.stderr)
+            sys.exit(1)
+        cmd_introspect(yaml_path, config_name, sys.argv[4], sys.argv[5])
     elif cmd == "update-status":
         status = sys.argv[4] if len(sys.argv) > 4 else "UNKNOWN"
         version = sys.argv[5] if len(sys.argv) > 5 else ""
         size = sys.argv[6] if len(sys.argv) > 6 else ""
         cmd_update_status(yaml_path, config_name, status, version, size)
     else:
-        print(f"Comando desconhecido: {cmd}", file=sys.stderr)
-        print("Use: pre | post | verify-args | update-status", file=sys.stderr)
+        print(f"ERRO: Comando desconhecido: {cmd}", file=sys.stderr)
+        print("Comandos: pre | post | verify-args | introspect | update-status", file=sys.stderr)
         sys.exit(1)
 
 

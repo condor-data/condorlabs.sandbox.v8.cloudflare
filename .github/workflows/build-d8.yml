@@ -240,13 +240,33 @@ jobs:
             exit 1
           }
 
+      - name: "[POST] Introspect binary (gn desc + nm + runtime probe)"
+        run: |
+          set -euo pipefail
+          CONFIG="${{ inputs.v8_config }}"
+          D8="./v8-build/v8/out/d8-${CONFIG}/d8"
+          BUILD_DIR="v8-build/v8/out/d8-${CONFIG}"
+          python3 configs/verify-build.py introspect configs/v8-cf.yaml "$CONFIG" "$D8" "$BUILD_DIR" || {
+            echo "::error::INTROSPECT FAILED!"
+            exit 1
+          }
+
+      - name: "[POST] Upload introspection report"
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: introspect-${{ inputs.v8_config }}-${{ steps.version.outputs.V8_VERSION }}
+          path: configs/reference/introspect-*.json
+          retention-days: 90
+          if-no-files-found: ignore
+
       - name: "[POST] Update build status in YAML"
         if: always()
         run: |
           CONFIG="${{ inputs.v8_config }}"
           D8="./v8-build/v8/out/d8-${CONFIG}/d8"
-          VERSION=$($D8 -e "print(version())" 2>/dev/null || echo "unknown")
-          SIZE=$(du -sh "$D8" 2>/dev/null | cut -f1 || echo "unknown")
+          VERSION=$($D8 -e "print(version())" 2>&1 || echo "unknown")
+          SIZE=$(du -sh "$D8" 2>&1 | cut -f1 || echo "unknown")
           if [ "${{ job.status }}" = "success" ]; then
             python3 configs/verify-build.py update-status configs/v8-cf.yaml "$CONFIG" "OK" "$VERSION" "$SIZE"
           else
