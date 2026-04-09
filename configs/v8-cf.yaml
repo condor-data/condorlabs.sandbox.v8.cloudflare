@@ -1,46 +1,15 @@
-# =============================================================================
-# V8 Build Configurations — Cloudflare workerd target
-# =============================================================================
-#
-# Este arquivo define TODAS as configs de build do d8 para Chrome.
-# O workflow build-d8.yml le este arquivo e gera args.gn dinamicamente.
-#
-# CICLO:
-#   Discovery (discover-flags.yml) → atualiza configs/reference/
-#   Humano edita este YAML → commit
-#   Build (build-d8.yml) → le YAML → gera args.gn → compila
-#   Resultado gravado neste YAML (last_build_*)
-#
-# REGRAS:
-#   - family: sandbox  → OBRIGA v8_enable_memory_corruption_api: true, is_asan: false
-#   - family: sanitizer → OBRIGA v8_enable_memory_corruption_api: false
-#   - base flags sao aplicadas a TODOS os configs
-#   - gn_args do config sobrescrevem base (merge)
-#   - Edite, commite, e o build pega automaticamente
-#
-# IMPORTANTE: NUNCA colocar secrets, credenciais ou dados sensiveis aqui.
-#             Este arquivo eh PUBLICO.
-# =============================================================================
-
 target: cloudflare
-version: "auto"  # "auto" = detect via workerd MODULE.bazel, ou pinar: "14.7.173.16"
-last_detected_version: "14.7.173.16"
+version: auto
+last_detected_version: 14.7.173.16
 last_discovery: null
-
-# Base flags (aplicadas a TODOS os configs ANTES das config-specific)
 base:
   v8_enable_sandbox: true
-  target_cpu: "x64"
+  target_cpu: x64
   treat_warnings_as_errors: false
-  cc_wrapper: "env CCACHE_SLOPPINESS=time_macros ccache"
-
-# =============================================================================
-# SANDBOX ESCAPE CONFIGS (COM Memory Corruption API, SEM sanitizers)
-# =============================================================================
-
+  cc_wrapper: env CCACHE_SLOPPINESS=time_macros ccache
 configs:
   fast:
-    description: "Iteracao rapida de PoC (component build, rebuild ~5-15s)"
+    description: Iteracao rapida de PoC (component build, rebuild ~5-15s)
     family: sandbox
     gn_args:
       is_debug: false
@@ -53,16 +22,21 @@ configs:
       v8_enable_object_print: true
       is_asan: false
     runtime_flags:
-      - --sandbox-testing
-      - --allow-natives-syntax
-      - --expose-gc
-    last_build_status: null
-    last_build_version: null
-    last_build_date: null
-    d8_binary_size: null
+    - --sandbox-testing
+    - --allow-natives-syntax
+    - --expose-gc
+    last_build_status: FAIL
+    last_build_version: '/home/runner/work/_temp/7456fc13-3c58-4edc-99f6-24e5dc8d0edb.sh:
+      line 3: ./v8-build/v8/out/d8-fast/d8: No such file or directory
 
+      unknown'
+    last_build_date: '2026-04-09T23:31:26Z'
+    d8_binary_size: 'du: cannot access ''./v8-build/v8/out/d8-fast/d8'': No such file
+      or directory
+
+      unknown'
   fuzz:
-    description: "Fuzzing automatizado com crash filter (static, dcheck)"
+    description: Fuzzing automatizado com crash filter (static, dcheck)
     family: sandbox
     gn_args:
       is_debug: false
@@ -72,16 +46,15 @@ configs:
       symbol_level: 0
       is_asan: false
     runtime_flags:
-      - --sandbox-fuzzing
-      - --allow-natives-syntax
-      - --expose-gc
+    - --sandbox-fuzzing
+    - --allow-natives-syntax
+    - --expose-gc
     last_build_status: null
     last_build_version: null
     last_build_date: null
     d8_binary_size: null
-
   debug:
-    description: "Full debug para agentes de IA e GDB/LLDB step-through"
+    description: Full debug para agentes de IA e GDB/LLDB step-through
     family: sandbox
     gn_args:
       is_debug: true
@@ -97,20 +70,19 @@ configs:
       v8_enable_verify_heap: true
       is_asan: false
     runtime_flags:
-      - --sandbox-testing
-      - --allow-natives-syntax
-      - --expose-gc
-      - --trace-turbo
-      - --print-opt-code
-      - --print-bytecode
-      - --print-maglev-graph
+    - --sandbox-testing
+    - --allow-natives-syntax
+    - --expose-gc
+    - --trace-turbo
+    - --print-opt-code
+    - --print-bytecode
+    - --print-maglev-graph
     last_build_status: null
     last_build_version: null
     last_build_date: null
     d8_binary_size: null
-
   release:
-    description: "Layout proximo de producao — validacao final antes do report"
+    description: Layout proximo de producao — validacao final antes do report
     family: sandbox
     gn_args:
       is_debug: false
@@ -120,19 +92,13 @@ configs:
       symbol_level: 0
       is_asan: false
     runtime_flags:
-      - --sandbox-fuzzing
+    - --sandbox-fuzzing
     last_build_status: null
     last_build_version: null
     last_build_date: null
     d8_binary_size: null
-
-  # ===========================================================================
-  # SANITIZER CONFIGS (SEM Memory Corruption API — incompativel!)
-  # ASAN sequestra SIGSEGV, impede crash filter. V8 BUILD.gn tem assert.
-  # ===========================================================================
-
   asan:
-    description: "Address Sanitizer — UAF, buffer overflow, heap OOB"
+    description: Address Sanitizer — UAF, buffer overflow, heap OOB
     family: sanitizer
     gn_args:
       is_debug: false
@@ -144,15 +110,15 @@ configs:
       v8_enable_backtrace: true
       v8_enable_object_print: true
     runtime_flags:
-      - --allow-natives-syntax
-      - --expose-gc
+    - --allow-natives-syntax
+    - --expose-gc
     last_build_status: null
     last_build_version: null
     last_build_date: null
     d8_binary_size: null
-
   tsan:
-    description: "Thread Sanitizer — data races (DefaultJobState UAF, MemoryChunk flag race)"
+    description: Thread Sanitizer — data races (DefaultJobState UAF, MemoryChunk flag
+      race)
     family: sanitizer
     gn_args:
       is_debug: false
@@ -164,15 +130,15 @@ configs:
       v8_enable_backtrace: true
       v8_enable_object_print: true
     runtime_flags:
-      - --allow-natives-syntax
-      - --expose-gc
+    - --allow-natives-syntax
+    - --expose-gc
     last_build_status: null
     last_build_version: null
     last_build_date: null
     d8_binary_size: null
-
   ubsan:
-    description: "Undefined Behavior Sanitizer — integer overflow, type confusion, null deref"
+    description: Undefined Behavior Sanitizer — integer overflow, type confusion,
+      null deref
     family: sanitizer
     gn_args:
       is_debug: false
@@ -185,9 +151,10 @@ configs:
       v8_enable_backtrace: true
       v8_enable_object_print: true
     runtime_flags:
-      - --allow-natives-syntax
-      - --expose-gc
+    - --allow-natives-syntax
+    - --expose-gc
     last_build_status: null
     last_build_version: null
     last_build_date: null
     d8_binary_size: null
+last_build: '2026-04-09T23:31:26Z'
