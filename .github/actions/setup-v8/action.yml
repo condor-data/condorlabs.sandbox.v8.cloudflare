@@ -100,7 +100,10 @@ runs:
 
         cd v8
         git fetch --tags origin || { echo "::error::git fetch falhou!"; exit 1; }
-        git fetch origin "${V8_BRANCH}" || { echo "::error::git fetch ${V8_BRANCH} falhou!"; exit 1; }
+        # branch-heads nao sao refs normais no V8 — usar refspec completo
+        git fetch origin "+refs/${V8_BRANCH}:refs/remotes/origin/${V8_BRANCH}" 2>&1 || {
+          echo "::warning::git fetch ${V8_BRANCH} via refspec falhou. Tentando via gclient..."
+        }
 
         if git checkout "${V8_VERSION}" 2>/dev/null; then
           echo "Checkout tag ${V8_VERSION} OK"
