@@ -1,0 +1,244 @@
+###############################################################################
+# Validate Configs — Testa os YAMLs de config SEM compilar nada
+#
+# Verifica:
+#   1. YAML parseia corretamente
+#   2. Todos os 7 configs existem
+#   3. Regras de integridade (sanitizer vs sandbox)
+#   4. Flags requeridas estao presentes
+#   5. Nenhum config viola restricoes (ex: asan + memory_corruption_api)
+#   6. Gera args.gn para cada config e mostra o output
+#
+# Roda em segundos (nao compila V8). Trigger: manual ou pode ser habilitado
+# em push se quiser CI real (desabilitado por padrao).
+#
+# Secrets: ZERO
+# Custo: ~0 (roda em <30s)
+###############################################################################
+name: "Validate configs (YAML + flags)"
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_extended:
+        description: "Rodar testes estendidos (gerar args.gn para cada config)"
+        required: false
+        default: "true"
+        type: boolean
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install PyYAML
+        run: pip3 install pyyaml
+
+      # ================================================================
+      # TESTE 1: YAML parseia
+      # ================================================================
+      - name: "[1/6] YAML parse test"
+        run: |
+          set -euo pipefail
+          echo "=== Testando parse de todos os YAML configs ==="
+          for f in configs/*.yaml; do
+            python3 -c "
+          import yaml, sys
+          with open('$f') as fh:
+              cfg = yaml.safe_load(fh)
+          configs = cfg.get('configs', {})
+          print(f'  $f: OK ({len(configs)} configs)')
+          " || { echo "::error::YAML PARSE FALHOU: $f"; exit 1; }
+          done
+          echo "::notice::Todos os YAMLs parseiam corretamente"
+
+      # ================================================================
+      # TESTE 2: Configs esperados existem
+      # ================================================================
+      - name: "[2/6] Required configs exist"
+        run: |
+          set -euo pipefail
+          REQUIRED="fast fuzz debug release asan tsan ubsan"
+          for f in configs/v8-*.yaml; do
+            echo "=== $f ==="
+            python3 -c "
+          import yaml, sys
+          with open('$f') as fh:
+              cfg = yaml.safe_load(fh)
+          configs = set(cfg.get('configs', {}).keys())
+          required = set('$REQUIRED'.split())
+          missing = required - configs
+          extra = configs - required
+          if missing:
+              print(f'  FALTANDO: {missing}')
+              sys.exit(1)
+          if extra:
+              print(f'  EXTRAS (OK): {extra}')
+          print(f'  Todos os {len(required)} configs requeridos presentes')
+          "
+          done
+
+      # ================================================================
+      # TESTE 3: Regras de integridade (yaml2gn --validate)
+      # ================================================================
+      - name: "[3/6] Integrity validation (yaml2gn.py)"
+        run: |
+          set -euo pipefail
+          for f in configs/v8-*.yaml; do
+            echo "=== $f ==="
+            python3 -c "
+          import yaml
+          with open('$f') as fh:
+              cfg = yaml.safe_load(fh)
+          for name, config in cfg.get('configs', {}).items():
+              print(f'  Validating {name}...', end=' ')
+              # Importar e rodar validacao do yaml2gn
+              exec(open('configs/yaml2gn.py').read())
+              errors = validate_config(name, config)
+              if errors:
+                  for e in errors:
+                      print(f'\n    ERROR: {e}')
+                  raise SystemExit(1)
+              print('OK')
+          "
+          done
+          echo "::notice::Todas as validacoes de integridade passaram"
+
+      # ================================================================
+      # TESTE 4: Flags requeridas presentes
+      # ================================================================
+      - name: "[4/6] Required flags check"
+        run: |
+          set -euo pipefail
+          python3 << 'PYEOF'
+          import yaml, sys
+
+          REQUIRED_IN_ALL = ['v8_enable_sandbox', 'target_cpu', 'v8_enable_memory_corruption_api']
+          REQUIRED_IN_SANDBOX = ['is_asan']  # deve ser false explicitamente
+          REQUIRED_IN_SANITIZER = []  # pelo menos um sanitizer flag
+
+          errors = []
+          for yaml_file in ['configs/v8-cf.yaml']:
+              with open(yaml_file) as f:
+                  cfg = yaml.safe_load(f)
+              base = cfg.get('base', {})
+              for name, config in cfg.get('configs', {}).items():
+                  merged = {**base, **config.get('gn_args', {})}
+                  family = config.get('family', 'unknown')
+
+                  # Verificar flags requeridas em todos
+                  for flag in REQUIRED_IN_ALL:
+                      if flag not in merged:
+                          # Pode estar na base
+                          if flag not in base:
+                              errors.append(f"{name}: flag requerida '{flag}' ausente!")
+
+                  # Sandbox: is_asan deve ser explicitamente false
+                  if family == 'sandbox':
+                      if merged.get('is_asan') is not False:
+                          errors.append(f"{name}: sandbox config DEVE ter is_asan=false explicito!")
+
+                  # Sanitizer: pelo menos um sanitizer ativo
+                  if family == 'sanitizer':
+                      has_san = merged.get('is_asan') or merged.get('is_tsan') or merged.get('is_ubsan')
+                      if not has_san:
+                          errors.append(f"{name}: sanitizer config sem nenhum sanitizer ativo!")
+
+          if errors:
+              for e in errors:
+                  print(f"::error::{e}")
+              sys.exit(1)
+          else:
+              print("Todas as flags requeridas presentes e corretas")
+          PYEOF
+
+      # ================================================================
+      # TESTE 5: Nenhum conflito de flags
+      # ================================================================
+      - name: "[5/6] Flag conflict check"
+        run: |
+          set -euo pipefail
+          python3 << 'PYEOF'
+          import yaml, sys
+
+          CONFLICTS = [
+              # (flag_a, value_a, flag_b, value_b, mensagem)
+              ('is_asan', True, 'v8_enable_memory_corruption_api', True,
+               'ASAN + memory_corruption_api eh PROIBIDO (V8 BUILD.gn assert)'),
+              ('is_tsan', True, 'v8_enable_memory_corruption_api', True,
+               'TSAN + memory_corruption_api eh incompativel'),
+              ('is_ubsan', True, 'v8_enable_memory_corruption_api', True,
+               'UBSan + memory_corruption_api eh incompativel'),
+              ('is_asan', True, 'is_tsan', True,
+               'ASAN + TSAN nao podem ser usados juntos'),
+              ('is_asan', True, 'is_ubsan', True,
+               'ASAN + UBSan simultaneos podem causar conflitos'),
+          ]
+
+          errors = []
+          for yaml_file in ['configs/v8-cf.yaml']:
+              with open(yaml_file) as f:
+                  cfg = yaml.safe_load(f)
+              base = cfg.get('base', {})
+              for name, config in cfg.get('configs', {}).items():
+                  merged = {**base, **config.get('gn_args', {})}
+                  for fa, va, fb, vb, msg in CONFLICTS:
+                      if merged.get(fa) == va and merged.get(fb) == vb:
+                          errors.append(f"{name}: CONFLITO — {msg} ({fa}={va} + {fb}={vb})")
+
+          if errors:
+              for e in errors:
+                  print(f"::error::{e}")
+              sys.exit(1)
+          else:
+              print("Nenhum conflito de flags detectado")
+          PYEOF
+
+      # ================================================================
+      # TESTE 6: Gerar args.gn para cada config (extended)
+      # ================================================================
+      - name: "[6/6] Generate args.gn for all configs (dry-run)"
+        if: inputs.run_extended == 'true' || inputs.run_extended == ''
+        run: |
+          set -euo pipefail
+          for f in configs/v8-*.yaml; do
+            echo ""
+            echo "========================================="
+            echo "  $f"
+            echo "========================================="
+            python3 -c "
+          import yaml
+          with open('$f') as fh:
+              cfg = yaml.safe_load(fh)
+          for name in cfg.get('configs', {}).keys():
+              print(f'--- Config: {name} ---')
+          " | while read -r line; do
+              config_name=$(echo "$line" | sed 's/--- Config: //;s/ ---//')
+              if [ -n "$config_name" ] && [ "$config_name" != "---" ]; then
+                echo "--- $config_name ---"
+                python3 configs/yaml2gn.py "$f" "$config_name" 2>&1 | grep " = " | sed 's/^/  /'
+                echo ""
+              fi
+            done
+          done
+          echo "::notice::Todos os args.gn gerados com sucesso (dry-run)"
+
+      # ================================================================
+      # RESUMO
+      # ================================================================
+      - name: Summary
+        run: |
+          echo ""
+          echo "========================================="
+          echo "  TODOS OS 6 TESTES PASSARAM"
+          echo "========================================="
+          echo ""
+          echo "YAMLs validados:"
+          ls -la configs/*.yaml
+          echo ""
+          echo "Para editar configs: modifique configs/v8-chrome.yaml e commite."
+          echo "Para buildar: gh workflow run build-d8.yml -f v8_config=fast"
