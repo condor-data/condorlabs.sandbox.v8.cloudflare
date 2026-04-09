@@ -30,6 +30,9 @@ on:
           - fuzz
           - debug
           - release
+          - asan
+          - tsan
+          - ubsan
 
 jobs:
   build-d8:
@@ -162,14 +165,28 @@ jobs:
           OUT="v8-build/v8/out/d8-${CONFIG}"
           mkdir -p "$OUT"
 
-          cat > "$OUT/args.gn" << 'BASEEOF'
+          # DUAS BASES: sanitizer (sem memory_corruption_api) vs sandbox (com)
+          case "$CONFIG" in
+            asan|tsan|ubsan)
+              cat > "$OUT/args.gn" << 'SANEOF'
+          v8_enable_sandbox = true
+          v8_enable_memory_corruption_api = false
+          target_cpu = "x64"
+          treat_warnings_as_errors = false
+          cc_wrapper = "env CCACHE_SLOPPINESS=time_macros ccache"
+          SANEOF
+              ;;
+            *)
+              cat > "$OUT/args.gn" << 'SBXEOF'
           v8_enable_sandbox = true
           v8_enable_memory_corruption_api = true
           target_cpu = "x64"
           is_asan = false
           treat_warnings_as_errors = false
           cc_wrapper = "env CCACHE_SLOPPINESS=time_macros ccache"
-          BASEEOF
+          SBXEOF
+              ;;
+          esac
 
           case "$CONFIG" in
             fast)
@@ -211,6 +228,37 @@ jobs:
           dcheck_always_on = false
           is_component_build = false
           symbol_level = 0
+          EOF
+              ;;
+            asan)
+              cat >> "$OUT/args.gn" << 'EOF'
+          is_asan = true
+          is_debug = false
+          dcheck_always_on = true
+          is_component_build = false
+          symbol_level = 1
+          v8_enable_backtrace = true
+          EOF
+              ;;
+            tsan)
+              cat >> "$OUT/args.gn" << 'EOF'
+          is_tsan = true
+          is_debug = false
+          dcheck_always_on = true
+          is_component_build = false
+          symbol_level = 1
+          v8_enable_backtrace = true
+          EOF
+              ;;
+            ubsan)
+              cat >> "$OUT/args.gn" << 'EOF'
+          is_ubsan = true
+          is_ubsan_vptr = true
+          is_debug = false
+          dcheck_always_on = true
+          is_component_build = false
+          symbol_level = 1
+          v8_enable_backtrace = true
           EOF
               ;;
           esac
