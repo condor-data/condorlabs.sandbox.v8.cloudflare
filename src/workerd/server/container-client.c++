@@ -36,6 +36,11 @@ namespace {
 
 constexpr uint16_t SIDECAR_INGRESS_PORT = 39001;
 
+constexpr kj::StringPtr SIDECAR_DNS_SERVERS[] = {
+  "1.1.1.1"_kj,
+  "8.8.8.8"_kj,
+};
+
 // Default limit for JSON API responses (16 MiB — Docker JSON responses are small).
 constexpr uint64_t MAX_JSON_RESPONSE_SIZE = 16ULL * 1024 * 1024;
 
@@ -1942,6 +1947,10 @@ kj::Promise<void> ContainerClient::createSidecarContainer(
   auto hostConfig = jsonRoot.initHostConfig();
   hostConfig.setPublishAllPorts(true);
   hostConfig.setNetworkMode("bridge");
+  auto dns = hostConfig.initDns(kj::size(SIDECAR_DNS_SERVERS));
+  for (auto i: kj::indices(SIDECAR_DNS_SERVERS)) {
+    dns.set(i, SIDECAR_DNS_SERVERS[i]);
+  }
 
   auto extraHosts = hostConfig.initExtraHosts(1);
   extraHosts.set(0, "host.docker.internal:host-gateway"_kj);

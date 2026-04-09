@@ -292,6 +292,10 @@ struct SpanContext {
   void toCapnp(rpc::SpanContext::Builder writer) const;
   SpanContext clone() const;
 
+  // Parse a W3C traceparent string into a SpanContext.
+  // Format: "{version}-{trace-id}-{parent-id}-{flags}"
+  static kj::Maybe<SpanContext> tryFromTraceparent(kj::StringPtr traceparent);
+
  private:
   TraceId traceId;
   kj::Maybe<SpanId> spanId;
@@ -782,6 +786,7 @@ struct Onset final {
     ExecutionModel executionModel = ExecutionModel::STATELESS;
     kj::Maybe<kj::String> scriptName;
     kj::Maybe<kj::Own<ScriptVersion::Reader>> scriptVersion;
+    kj::Maybe<TracePreview> preview;
     kj::Maybe<kj::String> dispatchNamespace;
     kj::Maybe<kj::String> scriptId;
     kj::Maybe<kj::Array<kj::String>> scriptTags;

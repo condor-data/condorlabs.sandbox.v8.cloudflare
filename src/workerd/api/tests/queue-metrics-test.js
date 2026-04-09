@@ -9,6 +9,10 @@ export default {
     const { pathname } = new URL(request.url);
     if (pathname === '/metrics') {
       assert.strictEqual(request.method, 'GET');
+      // Regression test: read the request body before responding, matching
+      // production behavior. If we omit expectedBodySize on the GET request,
+      // the body pipe is never closed and this arrayBuffer() call deadlocks
+      await request.arrayBuffer();
       return Response.json({
         backlogCount: 100,
         backlogBytes: 2048,

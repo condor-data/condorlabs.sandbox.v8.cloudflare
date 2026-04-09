@@ -463,7 +463,8 @@ jsg::Promise<WorkerQueue::Metrics> WorkerQueue::metrics(
   auto headers = kj::HttpHeaders(context.getHeaderTable());
 
   auto client = context.getHttpClient(subrequestChannel, true, kj::none, "queue_metrics"_kjc);
-  auto req = client->request(kj::HttpMethod::GET, "https://fake-host/metrics"_kjc, headers);
+  auto req = client->request(
+      kj::HttpMethod::GET, "https://fake-host/metrics"_kjc, headers, static_cast<uint64_t>(0));
   const auto& headerIds = context.getHeaderIds();
 
   static constexpr auto handleMetrics = [](auto req, auto client,

@@ -363,6 +363,7 @@ void WorkerTracer::setEventInfoInternal(
           trace->scriptVersion.map([](auto& scriptVersion) -> kj::Own<ScriptVersion::Reader> {
       return capnp::clone(*scriptVersion);
     }),
+      .preview = trace->preview.map([](auto& preview) { return preview.clone(); }),
       .dispatchNamespace = mapCopyString(trace->dispatchNamespace),
       .scriptId = mapCopyString(trace->scriptId),
       .scriptTags = KJ_MAP(tag, trace->scriptTags) { return kj::str(tag); },

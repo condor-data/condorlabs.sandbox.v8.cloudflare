@@ -88,6 +88,12 @@ interface ScriptVersion {
   readonly message?: string;
 }
 
+interface TracePreviewInfo {
+  readonly id: string;
+  readonly slug: string;
+  readonly name: string;
+}
+
 interface Onset {
   readonly type: "onset";
   readonly attributes: Attribute[];
@@ -99,6 +105,7 @@ interface Onset {
   readonly scriptName?: string;
   readonly scriptTags?: string[];
   readonly scriptVersion?: ScriptVersion;
+  readonly preview?: TracePreviewInfo;
   readonly info: FetchEventInfo | ConnectEventInfo | JsRpcEventInfo |
                  ScheduledEventInfo | AlarmEventInfo | QueueEventInfo |
                  EmailEventInfo | TraceEventInfo |

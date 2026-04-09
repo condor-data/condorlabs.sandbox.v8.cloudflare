@@ -313,6 +313,45 @@ SpanContext SpanContext::clone() const {
   return SpanContext(traceId, spanId);
 }
 
+kj::Maybe<SpanContext> SpanContext::tryFromTraceparent(kj::StringPtr tp) {
+  // The W3C Trace Context traceparent header has a fixed-length format:
+  // {version:2}-{trace-id:32}-{parent-id:16}-{flags:2}
+  //
+  // See: https://www.w3.org/TR/trace-context/#traceparent-header
+  //
+  // The spec mandates fixed-width hex fields with fixed positions
+  constexpr size_t kVersionStart = 0;
+  constexpr size_t kVersionEnd = 2;
+  constexpr size_t kTraceIdStart = 3;
+  constexpr size_t kTraceIdMid = 19;
+  constexpr size_t kTraceIdEnd = 35;
+  constexpr size_t kParentIdStart = 36;
+  constexpr size_t kParentIdEnd = 52;
+  constexpr size_t kFlagsStart = 53;
+  constexpr size_t kFlagsEnd = 55;
+
+  if (tp.size() != kFlagsEnd) return kj::none;
+  if (tp[kVersionEnd] != '-' || tp[kTraceIdEnd] != '-' || tp[kParentIdEnd] != '-') {
+    return kj::none;
+  }
+
+  uint8_t version =
+      KJ_UNWRAP_OR_RETURN(hexToUint64(tp.slice(kVersionStart, kVersionEnd)), kj::none);
+  uint64_t traceHigh =
+      KJ_UNWRAP_OR_RETURN(hexToUint64(tp.slice(kTraceIdStart, kTraceIdMid)), kj::none);
+  uint64_t traceLow =
+      KJ_UNWRAP_OR_RETURN(hexToUint64(tp.slice(kTraceIdMid, kTraceIdEnd)), kj::none);
+  uint64_t parentId =
+      KJ_UNWRAP_OR_RETURN(hexToUint64(tp.slice(kParentIdStart, kParentIdEnd)), kj::none);
+  uint8_t flags = KJ_UNWRAP_OR_RETURN(hexToUint64(tp.slice(kFlagsStart, kFlagsEnd)), kj::none);
+
+  if (version != 0 || (traceHigh == 0 && traceLow == 0) || parentId == 0) return kj::none;
+  constexpr uint8_t kSampledFlag = 0x01;
+  if ((flags & kSampledFlag) == 0) return kj::none;
+
+  return SpanContext(TraceId(traceLow, traceHigh), SpanId(parentId));
+}
+
 kj::String KJ_STRINGIFY(const SpanContext& context) {
   return kj::str(context.getTraceId(), "-", context.getSpanId());
 }
@@ -1265,11 +1304,20 @@ kj::Maybe<kj::String> getEntrypointFromReader(const rpc::Trace::Onset::Reader& r
   }
   return kj::none;
 }
+
+kj::Maybe<tracing::TracePreview> getPreviewFromReader(const rpc::Trace::Onset::Reader& reader) {
+  if (reader.hasPreview()) {
+    return tracing::TracePreview(reader.getPreview());
+  }
+  return kj::none;
+}
+
 Onset::WorkerInfo getWorkerInfoFromReader(const rpc::Trace::Onset::Reader& reader) {
   return Onset::WorkerInfo{
     .executionModel = reader.getExecutionModel(),
     .scriptName = getScriptNameFromReader(reader),
     .scriptVersion = getScriptVersionFromReader(reader),
+    .preview = getPreviewFromReader(reader),
     .dispatchNamespace = getDispatchNamespaceFromReader(reader),
     .scriptId = getScriptIdFromReader(reader),
     .scriptTags = getScriptTagsFromReader(reader),
@@ -1315,6 +1363,9 @@ void Onset::copyTo(rpc::Trace::Onset::Builder builder) const {
   KJ_IF_SOME(e, workerInfo.entrypoint) {
     builder.setEntryPoint(e);
   }
+  KJ_IF_SOME(p, workerInfo.preview) {
+    p.copyTo(builder.initPreview());
+  }
   auto infoBuilder = builder.initInfo();
   writeOnsetInfo(info, infoBuilder);
 
@@ -1329,6 +1380,7 @@ Onset::WorkerInfo Onset::WorkerInfo::clone() const {
     .executionModel = executionModel,
     .scriptName = mapCopyString(scriptName),
     .scriptVersion = scriptVersion.map([](auto& version) { return capnp::clone(*version); }),
+    .preview = preview.map([](auto& preview) { return preview.clone(); }),
     .dispatchNamespace = mapCopyString(dispatchNamespace),
     .scriptId = mapCopyString(scriptId),
     .scriptTags =

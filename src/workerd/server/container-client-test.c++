@@ -167,5 +167,33 @@ KJ_TEST("ContainerCreateRequest encodes structured mounts with NoCopy") {
   KJ_EXPECT(decodedMounts[0].getVolumeOptions().getNoCopy());
 }
 
+KJ_TEST("ContainerCreateRequest encodes HostConfig Dns") {
+  capnp::JsonCodec codec;
+  codec.handleByAnnotation<docker_api::Docker::ContainerCreateRequest>();
+
+  capnp::MallocMessageBuilder message;
+  auto root = message.initRoot<docker_api::Docker::ContainerCreateRequest>();
+  root.setImage("test-image");
+
+  auto dns = root.initHostConfig().initDns(2);
+  dns.set(0, "1.1.1.1");
+  dns.set(1, "8.8.8.8");
+
+  auto json = codec.encode(root);
+  auto jsonText = json.asPtr();
+
+  KJ_EXPECT(jsonText.contains("\"Dns\""));
+  KJ_EXPECT(jsonText.contains("1.1.1.1"));
+  KJ_EXPECT(jsonText.contains("8.8.8.8"));
+
+  auto decoded = decodeJsonResponse<docker_api::Docker::ContainerCreateRequest>(jsonText);
+  auto decodedRoot = decoded->getRoot<docker_api::Docker::ContainerCreateRequest>();
+  auto decodedDns = decodedRoot.getHostConfig().getDns();
+
+  KJ_REQUIRE(decodedDns.size() == 2);
+  KJ_EXPECT(decodedDns[0] == "1.1.1.1");
+  KJ_EXPECT(decodedDns[1] == "8.8.8.8");
+}
+
 }  // namespace
 }  // namespace workerd::server

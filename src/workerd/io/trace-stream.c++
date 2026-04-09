@@ -62,6 +62,7 @@ namespace {
   V(OK, "ok")                                                                                      \
   V(ONSET, "onset")                                                                                \
   V(OUTCOME, "outcome")                                                                            \
+  V(PREVIEW, "preview")                                                                            \
   V(QUEUE, "queue")                                                                                \
   V(QUEUENAME, "queueName")                                                                        \
   V(RAWSIZE, "rawSize")                                                                            \
@@ -81,6 +82,7 @@ namespace {
   V(SPANOPEN, "spanOpen")                                                                          \
   V(STACK, "stack")                                                                                \
   V(STATUSCODE, "statusCode")                                                                      \
+  V(SLUG, "slug")                                                                                  \
   V(STREAMDIAGEVENT, "streamDiagEvent")                                                            \
   V(STREAMDIAGNOSTIC, "streamDiagnostic")                                                          \
   V(TAG, "tag")                                                                                    \
@@ -365,6 +367,13 @@ jsg::JsValue ToJs(jsg::Lock& js, const Onset& onset, StringCache& cache) {
       vobj.set(js, MESSAGE_STR, js.str(version->getMessage()));
     }
     obj.set(js, SCRIPTVERSION_STR, vobj);
+  }
+  KJ_IF_SOME(preview, onset.workerInfo.preview) {
+    auto pobj = js.obj();
+    pobj.set(js, ID_STR, js.str(preview.id));
+    pobj.set(js, SLUG_STR, js.str(preview.slug));
+    pobj.set(js, NAME_STR, js.str(preview.name));
+    obj.set(js, PREVIEW_STR, pobj);
   }
 
   KJ_SWITCH_ONEOF(onset.info) {

@@ -481,6 +481,8 @@ KJ_TEST("Read/Write Onset works") {
   Onset info(staticSpanId, Onset::Info(kj::mv(fetchInfo)),
       {
         .scriptName = kj::str("foo"),
+        .preview = TracePreview(kj::str("63bafce9179948688866bb22268eb1c6"),
+            kj::str("feature-my-branch"), kj::str("feature/my-branch")),
       },
       nullptr);
   info.copyTo(infoBuilder);
@@ -491,12 +493,20 @@ KJ_TEST("Read/Write Onset works") {
   KJ_ASSERT(fetchInfo2.method == kj::HttpMethod::GET);
   KJ_ASSERT(fetchInfo2.url == "https://example.com"_kj);
   KJ_ASSERT(info2.workerInfo.executionModel == ExecutionModel::STATELESS);
+  auto& preview2 = KJ_ASSERT_NONNULL(info2.workerInfo.preview);
+  KJ_ASSERT(preview2.id == "63bafce9179948688866bb22268eb1c6"_kj);
+  KJ_ASSERT(preview2.slug == "feature-my-branch"_kj);
+  KJ_ASSERT(preview2.name == "feature/my-branch"_kj);
 
   Onset info3 = info.clone();
   FetchEventInfo& fetchInfo3 = KJ_ASSERT_NONNULL(info3.info.tryGet<FetchEventInfo>());
   KJ_ASSERT(fetchInfo3.method == kj::HttpMethod::GET);
   KJ_ASSERT(fetchInfo3.url == "https://example.com"_kj);
   KJ_ASSERT(info3.workerInfo.executionModel == ExecutionModel::STATELESS);
+  auto& preview3 = KJ_ASSERT_NONNULL(info3.workerInfo.preview);
+  KJ_ASSERT(preview3.id == "63bafce9179948688866bb22268eb1c6"_kj);
+  KJ_ASSERT(preview3.slug == "feature-my-branch"_kj);
+  KJ_ASSERT(preview3.name == "feature/my-branch"_kj);
 }
 
 KJ_TEST("Read/Write Outcome works") {
@@ -614,5 +624,79 @@ KJ_TEST("Trace with Durable Object ID") {
   auto trace2 = kj::refcounted<Trace>(traceBuilder.asReader());
   KJ_ASSERT(KJ_REQUIRE_NONNULL(trace2->durableObjectId) == "abc123def456"_kj);
 }
+KJ_TEST("SpanContext::tryFromTraceparent valid") {
+  auto result = KJ_ASSERT_NONNULL(SpanContext::tryFromTraceparent(
+      "00-11223344556677889900aabbccddeeff-a1b2c3d4e5f60718-01"_kj));
+  KJ_EXPECT(result.getTraceId() == TraceId(0x9900aabbccddeeff, 0x1122334455667788));
+  KJ_EXPECT(KJ_ASSERT_NONNULL(result.getSpanId()) == SpanId(0xa1b2c3d4e5f60718));
+}
+
+KJ_TEST("SpanContext::tryFromTraceparent sampled with extra flags") {
+  auto result = KJ_ASSERT_NONNULL(SpanContext::tryFromTraceparent(
+      "00-11223344556677889900aabbccddeeff-a1b2c3d4e5f60718-03"_kj));
+  KJ_EXPECT(result.getTraceId() == TraceId(0x9900aabbccddeeff, 0x1122334455667788));
+  KJ_EXPECT(KJ_ASSERT_NONNULL(result.getSpanId()) == SpanId(0xa1b2c3d4e5f60718));
+}
+
+KJ_TEST("SpanContext::tryFromTraceparent rejects invalid inputs") {
+  // Empty
+  KJ_EXPECT(SpanContext::tryFromTraceparent(""_kj) == kj::none);
+  // Degenerate
+  KJ_EXPECT(SpanContext::tryFromTraceparent("---"_kj) == kj::none);
+  KJ_EXPECT(SpanContext::tryFromTraceparent("00-1-1-00"_kj) == kj::none);
+
+  // Wrong total length (too short, too long)
+  KJ_EXPECT(SpanContext::tryFromTraceparent(
+                "00-11223344556677889900aabbccddeeff-a1b2c3d4e5f60718-0"_kj) == kj::none);
+  KJ_EXPECT(SpanContext::tryFromTraceparent(
+                "00-11223344556677889900aabbccddeeff-a1b2c3d4e5f60718-012"_kj) == kj::none);
+
+  // Wrong field sizes: version too short
+  KJ_EXPECT(SpanContext::tryFromTraceparent(
+                "0-11223344556677889900aabbccddeeff0-a1b2c3d4e5f60718-01"_kj) == kj::none);
+  // Wrong field sizes: trace-id too long
+  KJ_EXPECT(SpanContext::tryFromTraceparent(
+                "00-11223344556677889900aabbccddeeff0-1b2c3d4e5f60718-01"_kj) == kj::none);
+  // Wrong field sizes: trace-id too short
+  KJ_EXPECT(SpanContext::tryFromTraceparent(
+                "00-11223344556677889900aabbccddee-a1b2c3d4e5f6071800-01"_kj) == kj::none);
+  // Wrong field sizes: parent-id too long
+  KJ_EXPECT(SpanContext::tryFromTraceparent(
+                "00-1223344556677889900aabbccddeeff-a1b2c3d4e5f607180-01"_kj) == kj::none);
+  // Wrong field sizes: parent-id too short
+  KJ_EXPECT(SpanContext::tryFromTraceparent(
+                "00-112233445566778899900aabbccddeeff-1b2c3d4e5f6071-01"_kj) == kj::none);
+  // Empty fields
+  KJ_EXPECT(SpanContext::tryFromTraceparent("00--a1b2c3d4e5f60718-01"_kj) == kj::none);
+  KJ_EXPECT(
+      SpanContext::tryFromTraceparent("00-11223344556677889900aabbccddeeff--01"_kj) == kj::none);
+
+  // Bad hex
+  KJ_EXPECT(SpanContext::tryFromTraceparent(
+                "0g-11223344556677889900aabbccddeeff-a1b2c3d4e5f60718-01"_kj) == kj::none);
+  KJ_EXPECT(SpanContext::tryFromTraceparent(
+                "00-x1223344556677889900aabbccddeeff-a1b2c3d4e5f60718-01"_kj) == kj::none);
+  KJ_EXPECT(SpanContext::tryFromTraceparent(
+                "00-11223344556677889900aabbccddeeff-a1b2c3d4e5f6071x-01"_kj) == kj::none);
+
+  // Unsupported version
+  KJ_EXPECT(SpanContext::tryFromTraceparent(
+                "01-11223344556677889900aabbccddeeff-a1b2c3d4e5f60718-01"_kj) == kj::none);
+  KJ_EXPECT(SpanContext::tryFromTraceparent(
+                "ff-11223344556677889900aabbccddeeff-a1b2c3d4e5f60718-01"_kj) == kj::none);
+
+  // All-zero trace-id
+  KJ_EXPECT(SpanContext::tryFromTraceparent(
+                "00-00000000000000000000000000000000-a1b2c3d4e5f60718-01"_kj) == kj::none);
+
+  // All-zero parent-id
+  KJ_EXPECT(SpanContext::tryFromTraceparent(
+                "00-11223344556677889900aabbccddeeff-0000000000000000-01"_kj) == kj::none);
+
+  // Unsampled
+  KJ_EXPECT(SpanContext::tryFromTraceparent(
+                "00-11223344556677889900aabbccddeeff-a1b2c3d4e5f60718-00"_kj) == kj::none);
+}
+
 }  // namespace
 }  // namespace workerd::tracing
