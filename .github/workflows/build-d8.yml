@@ -91,6 +91,15 @@ jobs:
             exit 1
           fi
 
+      - name: Enable core dumps
+        run: |
+          ulimit -c unlimited
+          sudo mkdir -p /tmp/coredumps
+          echo '/tmp/coredumps/core.%e.%p.%t' | sudo tee /proc/sys/kernel/core_pattern
+          sudo systemctl disable apport 2>/dev/null || true
+          sudo systemctl stop apport 2>/dev/null || true
+          echo "::notice::Core dumps habilitados em /tmp/coredumps/"
+
       - name: Install build dependencies
         run: |
           set -euo pipefail
@@ -343,3 +352,21 @@ jobs:
           retention-days: 90
           if-no-files-found: error
           compression-level: 6
+
+      - name: Upload core dumps (se existirem)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coredumps-${{ inputs.v8_config }}-${{ steps.version.outputs.V8_VERSION }}
+          path: /tmp/coredumps/
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Upload core dumps (se existirem)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coredumps-${{ inputs.v8_config }}-${{ steps.version.outputs.V8_VERSION }}
+          path: /tmp/coredumps/
+          retention-days: 30
+          if-no-files-found: ignore

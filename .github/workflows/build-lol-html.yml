@@ -1,0 +1,142 @@
+###############################################################################
+# Build lol-html standalone via Cargo
+#
+# Para debug dos null byte mXSS bypasses no parser Rust.
+# Compila lol-html standalone (sem workerd) com opcao de ASAN.
+#
+# Trigger: APENAS manual (workflow_dispatch)
+# Secrets: ZERO
+# Custo: $0
+###############################################################################
+name: "Build lol-html (Rust parser standalone)"
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: "Build type"
+        required: true
+        default: "test"
+        type: choice
+        options:
+          - debug
+          - release
+          - asan
+          - test
+      lol_html_ref:
+        description: "Git ref override (commit/tag/branch). Vazio = commit do workerd."
+        required: false
+        default: ""
+        type: string
+
+jobs:
+  build-lol-html:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout workflows
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github
+          sparse-checkout-cone-mode: true
+
+      - name: Detect lol-html version from workerd
+        id: version
+        run: |
+          set -euo pipefail
+          if [ -n "${{ inputs.lol_html_ref }}" ]; then
+            echo "LOL_REF=${{ inputs.lol_html_ref }}" >> $GITHUB_OUTPUT
+            echo "::notice::Override: ${{ inputs.lol_html_ref }}"
+          else
+            # Extrair commit do lol-html do workerd deps
+            LOL_COMMIT=$(curl -sf 'https://raw.githubusercontent.com/cloudflare/workerd/main/deps/rust/crates/BUILD.lol_html-2.7.2.bazel' | head -5 | grep -oP '[0-9a-f]{40}' || echo "")
+            if [ -z "$LOL_COMMIT" ]; then
+              LOL_COMMIT="e3aa54798602dd27250fafde1b5a66f080046252"
+              echo "::warning::Nao conseguiu detectar commit. Usando fallback: ${LOL_COMMIT}"
+            fi
+            echo "LOL_REF=${LOL_COMMIT}" >> $GITHUB_OUTPUT
+            echo "::notice::lol-html commit from workerd: ${LOL_COMMIT}"
+          fi
+
+      - name: Install Rust
+        uses: actions/checkout@v4
+        with:
+          repository: cloudflare/lol-html
+          ref: ${{ steps.version.outputs.LOL_REF }}
+          path: lol-html
+
+      - name: Setup Rust toolchain
+        run: |
+          rustup update stable
+          rustup default stable
+          # Nightly para ASAN
+          if [ "${{ inputs.build_type }}" = "asan" ]; then
+            rustup toolchain install nightly
+            rustup component add rust-src --toolchain nightly
+          fi
+
+      - name: Enable core dumps
+        run: |
+          ulimit -c unlimited
+          sudo mkdir -p /tmp/coredumps
+          echo '/tmp/coredumps/core.%e.%p.%t' | sudo tee /proc/sys/kernel/core_pattern
+          sudo systemctl disable apport 2>/dev/null || true
+          sudo systemctl stop apport 2>/dev/null || true
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            lol-html/target
+          key: cargo-lol-html-${{ inputs.build_type }}-${{ steps.version.outputs.LOL_REF }}
+          restore-keys: cargo-lol-html-${{ inputs.build_type }}-
+
+      - name: Build lol-html (${{ inputs.build_type }})
+        run: |
+          set -euo pipefail
+          cd lol-html
+          case "${{ inputs.build_type }}" in
+            debug)
+              cargo build 2>&1
+              ;;
+            release)
+              cargo build --release 2>&1
+              ;;
+            asan)
+              RUSTFLAGS="-Z sanitizer=address" \
+                cargo +nightly build --target x86_64-unknown-linux-gnu 2>&1 || {
+                echo "::error::ASAN build FALHOU! Precisa nightly toolchain."
+                exit 1
+              }
+              ;;
+            test)
+              cargo test 2>&1 || {
+                echo "::error::TESTES FALHARAM! Pode indicar bug no parser."
+                exit 1
+              }
+              echo "::notice::Todos os testes passaram"
+              ;;
+          esac
+
+      - name: Upload build artifacts
+        if: inputs.build_type != 'test'
+        uses: actions/upload-artifact@v4
+        with:
+          name: lol-html-${{ inputs.build_type }}-${{ steps.version.outputs.LOL_REF }}
+          path: |
+            lol-html/target/${{ inputs.build_type == 'release' && 'release' || 'debug' }}/liblol_html*
+            lol-html/target/${{ inputs.build_type == 'release' && 'release' || 'debug' }}/*.so
+          retention-days: 90
+          if-no-files-found: warn
+
+      - name: Upload core dumps (se existirem)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coredumps-lol-html-${{ inputs.build_type }}
+          path: /tmp/coredumps/
+          retention-days: 30
+          if-no-files-found: ignore
