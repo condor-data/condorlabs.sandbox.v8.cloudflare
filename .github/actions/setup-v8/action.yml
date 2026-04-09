@@ -91,34 +91,64 @@ runs:
         echo "::group::Fetch V8 ${{ inputs.v8_version }}"
         set -euo pipefail
         V8_VERSION="${{ inputs.v8_version }}"
-        V8_BRANCH="${{ inputs.v8_branch }}"
 
-        mkdir -p v8-build && cd v8-build
-        if [ ! -d v8 ]; then
-          fetch v8 || { echo "::error::fetch v8 FALHOU!"; exit 1; }
-        fi
+        # IMPORTANTE: V8 source DEVE ficar separado do checkout do repo (fork).
+        # Usar v8-build/ na raiz do workspace, NÃO dentro do checkout do fork.
+        mkdir -p v8-build
+        cd v8-build
 
-        cd v8
-        git fetch --tags origin || { echo "::error::git fetch falhou!"; exit 1; }
-        # branch-heads nao sao refs normais no V8 — usar refspec completo
-        git fetch origin "+refs/${V8_BRANCH}:refs/remotes/origin/${V8_BRANCH}" 2>&1 || {
-          echo "::warning::git fetch ${V8_BRANCH} via refspec falhou. Tentando via gclient..."
-        }
+        if [ ! -d v8/.git ]; then
+          echo "Clonando V8 do googlesource (tag ${V8_VERSION})..."
+          # Clone direto com tag — mais rápido que fetch v8 + checkout
+          git clone --depth 1 --branch "${V8_VERSION}" \
+            https://chromium.googlesource.com/v8/v8.git v8 2>&1 || {
 
-        if git checkout "${V8_VERSION}" 2>/dev/null; then
-          echo "Checkout tag ${V8_VERSION} OK"
-        elif git checkout "tags/${V8_VERSION}" 2>/dev/null; then
-          echo "Checkout tags/${V8_VERSION} OK"
+            # Se a tag não existe como branch, clone sem tag e depois checkout
+            echo "::warning::Clone com --branch ${V8_VERSION} falhou. Tentando clone completo..."
+            git clone https://chromium.googlesource.com/v8/v8.git v8 || {
+              echo "::error::git clone V8 FALHOU! googlesource indisponivel?"
+              exit 1
+            }
+            cd v8
+            git fetch --tags origin || { echo "::error::git fetch --tags falhou!"; exit 1; }
+            git checkout "${V8_VERSION}" 2>/dev/null || \
+              git checkout "tags/${V8_VERSION}" 2>/dev/null || {
+              echo "::error::!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+              echo "::error::TAG ${V8_VERSION} NAO ENCONTRADA no googlesource!"
+              echo "::error::Verifique: git ls-remote --tags https://chromium.googlesource.com/v8/v8.git | grep ${V8_VERSION}"
+              echo "::error::!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+              exit 1
+            }
+            cd ..
+          }
         else
-          echo "::error::!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-          echo "::error::TAG EXATA ${V8_VERSION} NAO ENCONTRADA!"
-          echo "::error::Usando branch ${V8_BRANCH} como FALLBACK!"
-          echo "::error::!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-          git checkout "${V8_BRANCH}" || { echo "::error::Branch falhou!"; exit 1; }
+          echo "V8 source ja existe (cache hit)"
+          cd v8
+          git fetch --tags origin 2>&1 || true
+          git checkout "${V8_VERSION}" 2>/dev/null || \
+            git checkout "tags/${V8_VERSION}" 2>/dev/null || {
+            echo "::error::Tag ${V8_VERSION} nao encontrada mesmo com cache!"
+            exit 1
+          }
+          cd ..
         fi
 
-        gclient sync --with_branch_heads --with_tags -D || {
-          echo "::error::gclient sync FALHOU!"
+        # .gclient na raiz de v8-build/ (pai de v8/)
+        cat > .gclient << GCLIENT
+        solutions = [{
+          "name": "v8",
+          "url": "https://chromium.googlesource.com/v8/v8.git@${V8_VERSION}",
+          "deps_file": "DEPS",
+          "managed": False,
+          "custom_deps": {},
+        }]
+        GCLIENT
+
+        echo "gclient sync (deps do V8)..."
+        gclient sync --no-history --shallow -D 2>&1 | tail -10 || {
+          echo "::error::gclient sync FALHOU! Deps podem estar faltando."
           exit 1
         }
+
+        echo "V8 ${V8_VERSION} pronto em v8-build/v8/"
         echo "::endgroup::"
