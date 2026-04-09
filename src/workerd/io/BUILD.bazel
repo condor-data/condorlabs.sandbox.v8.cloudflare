@@ -205,6 +205,7 @@ wd_cc_library(
         "//src/workerd/jsg:exception",
         "//src/workerd/util:autogate",
         "//src/workerd/util:duration-exceeded-logger",
+        "//src/workerd/util:exception",
         "//src/workerd/util:sqlite",
         "@capnp-cpp//src/capnp:capnp-rpc",
         "@capnp-cpp//src/kj:kj-async",

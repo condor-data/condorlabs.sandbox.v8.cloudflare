@@ -32,6 +32,7 @@
 #include <workerd/server/actor-id-impl.h>
 #include <workerd/server/facet-tree-index.h>
 #include <workerd/server/fallback-service.h>
+#include <workerd/util/exception.h>
 #include <workerd/util/http-util.h>
 #include <workerd/util/mimetype.h>
 #include <workerd/util/stream-utils.h>
@@ -1602,8 +1603,17 @@ class RequestObserverWithTracer final: public RequestObserver, public WorkerInte
     return worker;
   }
 
-  void reportFailure(const kj::Exception& exception, FailureSource source) override {
-    outcome = EventOutcome::EXCEPTION;
+  void reportFailure(
+      const kj::Exception& exception, FailureSource source = FailureSource::OTHER) override {
+    // Handle all exception based outcomes that can appear in workerd.
+    if (exception.getDetail(MEMORY_LIMIT_DETAIL_ID) != kj::none) {
+      outcome = EventOutcome::EXCEEDED_MEMORY;
+    } else if (source == RequestObserver::FailureSource::DEFERRED_PROXY &&
+        exception.getType() == kj::Exception::Type::DISCONNECTED) {
+      outcome = EventOutcome::RESPONSE_STREAM_DISCONNECTED;
+    } else {
+      outcome = EventOutcome::EXCEPTION;
+    }
   }
 
   void setOutcome(EventOutcome newOutcome) override {
@@ -1620,9 +1630,15 @@ class RequestObserverWithTracer final: public RequestObserver, public WorkerInte
       SimpleResponseObserver responseWrapper(&fetchStatus, response);
       co_await KJ_ASSERT_NONNULL(inner).request(method, url, headers, requestBody, responseWrapper);
     } catch (...) {
-      fetchStatus = 500;
       auto exception = kj::getCaughtExceptionAsKj();
-      reportFailure(exception, FailureSource::OTHER);
+      // Overloaded-type exceptions generally represent some resource exhaustion (i.e. not
+      // necessarily an internal error) and correspond to HTTP error 503.
+      if (exception.getType() == kj::Exception::Type::OVERLOADED) {
+        fetchStatus = 503;
+      } else {
+        fetchStatus = 500;
+      }
+      reportFailure(exception);
       kj::throwFatalException(kj::mv(exception));
     }
   }
@@ -1637,7 +1653,7 @@ class RequestObserverWithTracer final: public RequestObserver, public WorkerInte
           host, headers, connection, response, settings);
     } catch (...) {
       auto exception = kj::getCaughtExceptionAsKj();
-      reportFailure(exception, FailureSource::OTHER);
+      reportFailure(exception);
       kj::throwFatalException(kj::mv(exception));
     }
   }
@@ -1647,7 +1663,7 @@ class RequestObserverWithTracer final: public RequestObserver, public WorkerInte
       co_return co_await KJ_ASSERT_NONNULL(inner).prewarm(url);
     } catch (...) {
       auto exception = kj::getCaughtExceptionAsKj();
-      reportFailure(exception, FailureSource::OTHER);
+      reportFailure(exception);
       kj::throwFatalException(kj::mv(exception));
     }
   }
@@ -1657,7 +1673,7 @@ class RequestObserverWithTracer final: public RequestObserver, public WorkerInte
       co_return co_await KJ_ASSERT_NONNULL(inner).runScheduled(scheduledTime, cron);
     } catch (...) {
       auto exception = kj::getCaughtExceptionAsKj();
-      reportFailure(exception, FailureSource::OTHER);
+      reportFailure(exception);
       kj::throwFatalException(kj::mv(exception));
     }
   }
@@ -1667,7 +1683,7 @@ class RequestObserverWithTracer final: public RequestObserver, public WorkerInte
       co_return co_await KJ_ASSERT_NONNULL(inner).runAlarm(scheduledTime, retryCount);
     } catch (...) {
       auto exception = kj::getCaughtExceptionAsKj();
-      reportFailure(exception, FailureSource::OTHER);
+      reportFailure(exception);
       kj::throwFatalException(kj::mv(exception));
     }
   }
@@ -1677,7 +1693,7 @@ class RequestObserverWithTracer final: public RequestObserver, public WorkerInte
       co_return co_await KJ_ASSERT_NONNULL(inner).test();
     } catch (...) {
       auto exception = kj::getCaughtExceptionAsKj();
-      reportFailure(exception, FailureSource::OTHER);
+      reportFailure(exception);
       kj::throwFatalException(kj::mv(exception));
     }
   }
@@ -1687,7 +1703,7 @@ class RequestObserverWithTracer final: public RequestObserver, public WorkerInte
       co_return co_await KJ_ASSERT_NONNULL(inner).customEvent(kj::mv(event));
     } catch (...) {
       auto exception = kj::getCaughtExceptionAsKj();
-      reportFailure(exception, FailureSource::OTHER);
+      reportFailure(exception);
       kj::throwFatalException(kj::mv(exception));
     }
   }
