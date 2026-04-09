@@ -90,8 +90,58 @@ def cmd_pre(yaml_path: str, config_name: str):
         sys.exit(1)
     print("  OK")
 
-    # 2. Flags requeridas
-    print("[2] Required flags...")
+    # 2. Flag dependencies and conflicts (flags que desabilitam/obrigam outras)
+    print("[2] Flag dependencies and conflicts...")
+    # Mapa de conflitos conhecidos do V8 BUILD.gn e flag-definitions.h:
+    # (flag_a, val_a, flag_b, val_b, severidade, mensagem)
+    CONFLICTS = [
+        ("is_asan", True, "v8_enable_memory_corruption_api", True, "FATAL",
+         "V8 BUILD.gn tem assert bloqueando: is_asan + memory_corruption_api"),
+        ("is_tsan", True, "v8_enable_memory_corruption_api", True, "FATAL",
+         "TSAN sequestra sinais, incompativel com crash filter"),
+        ("is_ubsan", True, "v8_enable_memory_corruption_api", True, "FATAL",
+         "UBSan incompativel com memory corruption API"),
+        ("is_asan", True, "is_tsan", True, "FATAL",
+         "ASAN e TSAN nao podem coexistir (ambos interceptam alocacoes)"),
+        ("is_asan", True, "is_component_build", True, "WARN",
+         "ASAN com component build pode ter falsos positivos em shared libs"),
+        ("v8_enable_verify_heap", True, "is_debug", False, "WARN",
+         "verify_heap em release build: GC fica 10-50x mais lento"),
+        ("v8_no_inline", True, "is_debug", False, "WARN",
+         "v8_no_inline em release build: performance -30%, binario nao representa producao"),
+    ]
+    # Mapa de dependencias (flag_a=val_a OBRIGA flag_b=val_b)
+    DEPENDENCIES = [
+        ("v8_enable_memory_corruption_api", True, "v8_enable_sandbox", True,
+         "memory_corruption_api requer sandbox habilitado"),
+        ("is_tsan", True, "is_asan", False,
+         "TSAN obriga is_asan=false"),
+    ]
+
+    for fa, va, fb, vb, sev, msg in CONFLICTS:
+        if merged.get(fa) == va and merged.get(fb) == vb:
+            if sev == "FATAL":
+                errors.append(f"CONFLITO FATAL: {fa}={va} + {fb}={vb} — {msg}")
+            else:
+                warnings.append(f"CONFLITO {sev}: {fa}={va} + {fb}={vb} — {msg}")
+
+    for fa, va, fb, vb, msg in DEPENDENCIES:
+        if merged.get(fa) == va and merged.get(fb) != vb:
+            actual_fb = merged.get(fb, "NOT_SET")
+            errors.append(f"DEPENDENCIA: {fa}={va} obriga {fb}={vb} mas esta {fb}={actual_fb} — {msg}")
+
+    if errors:
+        for e in errors:
+            print(f"  ERRO: {e}")
+        sys.exit(1)
+    for w in warnings:
+        print(f"  WARN: {w}")
+    if not errors and not warnings:
+        print("  OK (nenhum conflito ou dependencia violada)")
+
+    # 3. Flags requeridas
+    print("[3] Required flags...")
+    errors = []  # reset errors after conflicts check
     required = ["v8_enable_sandbox", "v8_enable_memory_corruption_api", "target_cpu"]
     for flag in required:
         if flag not in merged:
