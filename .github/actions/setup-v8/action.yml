@@ -97,40 +97,39 @@ runs:
         mkdir -p v8-build
         cd v8-build
 
-        if [ ! -d v8/.git ]; then
+        if [ -d v8/.git ]; then
+          echo "V8 source ja existe (cache hit). Atualizando para ${V8_VERSION}..."
+          cd v8
+          # Garantir que origin aponta para googlesource (não para fork)
+          git remote set-url origin https://chromium.googlesource.com/v8/v8.git
+          git fetch --tags origin 2>&1 || { echo "::error::git fetch falhou!"; exit 1; }
+          git checkout "${V8_VERSION}" 2>/dev/null || \
+            git checkout "tags/${V8_VERSION}" 2>/dev/null || {
+            echo "::error::Tag ${V8_VERSION} nao encontrada!"
+            exit 1
+          }
+          cd ..
+        else
+          # Limpar diretorio parcial (pode existir sem .git de cache corrompido)
+          rm -rf v8
           echo "Clonando V8 do googlesource (tag ${V8_VERSION})..."
-          # Clone direto com tag — mais rápido que fetch v8 + checkout
-          git clone --depth 1 --branch "${V8_VERSION}" \
+          git clone --branch "${V8_VERSION}" --depth 1 \
             https://chromium.googlesource.com/v8/v8.git v8 2>&1 || {
 
-            # Se a tag não existe como branch, clone sem tag e depois checkout
-            echo "::warning::Clone com --branch ${V8_VERSION} falhou. Tentando clone completo..."
+            echo "::warning::Clone shallow com tag falhou. Clone completo..."
             git clone https://chromium.googlesource.com/v8/v8.git v8 || {
-              echo "::error::git clone V8 FALHOU! googlesource indisponivel?"
+              echo "::error::git clone V8 FALHOU!"
               exit 1
             }
             cd v8
-            git fetch --tags origin || { echo "::error::git fetch --tags falhou!"; exit 1; }
+            git fetch --tags origin || { echo "::error::git fetch falhou!"; exit 1; }
             git checkout "${V8_VERSION}" 2>/dev/null || \
               git checkout "tags/${V8_VERSION}" 2>/dev/null || {
-              echo "::error::!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-              echo "::error::TAG ${V8_VERSION} NAO ENCONTRADA no googlesource!"
-              echo "::error::Verifique: git ls-remote --tags https://chromium.googlesource.com/v8/v8.git | grep ${V8_VERSION}"
-              echo "::error::!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+              echo "::error::TAG ${V8_VERSION} NAO ENCONTRADA!"
               exit 1
             }
             cd ..
           }
-        else
-          echo "V8 source ja existe (cache hit)"
-          cd v8
-          git fetch --tags origin 2>&1 || true
-          git checkout "${V8_VERSION}" 2>/dev/null || \
-            git checkout "tags/${V8_VERSION}" 2>/dev/null || {
-            echo "::error::Tag ${V8_VERSION} nao encontrada mesmo com cache!"
-            exit 1
-          }
-          cd ..
         fi
 
         # .gclient na raiz de v8-build/ (pai de v8/)
