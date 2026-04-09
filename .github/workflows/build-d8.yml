@@ -1,0 +1,297 @@
+###############################################################################
+# Build d8 com V8 version do Cloudflare workerd
+#
+# Extrai a versao V8 pinada no workerd (build/deps/v8.MODULE.bazel),
+# faz fetch do V8 dessa versao do googlesource, e compila d8 com GN.
+# Nao compila o workerd inteiro (Bazel) — apenas o d8 standalone.
+#
+# Runner: ubuntu-latest (4 vCPU, 16GB RAM, 14GB SSD) — GRATIS
+# Trigger: APENAS manual (workflow_dispatch)
+# Secrets: ZERO
+# Custo: $0
+###############################################################################
+name: "Build d8 (Cloudflare workerd V8)"
+
+on:
+  workflow_dispatch:
+    inputs:
+      v8_version:
+        description: "V8 version override (ex: 14.7.173.16). Vazio = auto-detect do workerd."
+        required: false
+        default: ""
+        type: string
+      v8_config:
+        description: "Build config"
+        required: true
+        default: "fast"
+        type: choice
+        options:
+          - fast
+          - fuzz
+          - debug
+          - release
+
+jobs:
+  build-d8:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout workflows
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github
+          sparse-checkout-cone-mode: true
+
+      # ================================================================
+      # Auto-detect V8 version do workerd (build/deps/v8.MODULE.bazel)
+      # ================================================================
+      - name: Detect V8 version from workerd
+        id: version
+        run: |
+          set -euo pipefail
+
+          if [ -n "${{ inputs.v8_version }}" ]; then
+            V8_VER="${{ inputs.v8_version }}"
+            echo "::notice::OVERRIDE MANUAL: V8 ${V8_VER}"
+          else
+            echo "::group::Auto-detecting V8 version from workerd..."
+
+            V8_VER=$(curl -sf --max-time 15 \
+              'https://raw.githubusercontent.com/cloudflare/workerd/main/build/deps/v8.MODULE.bazel' | \
+              grep '^VERSION' | sed 's/VERSION = "//;s/"//') || true
+
+            if [ -z "$V8_VER" ]; then
+              echo "::error::FALHA ao detectar versao V8 do workerd!"
+              echo "::error::raw.githubusercontent.com pode estar fora do ar."
+              echo "::error::Use o input v8_version para especificar manualmente."
+              exit 1
+            fi
+
+            echo "::endgroup::"
+            echo "::notice::Auto-detected: Cloudflare workerd V8 ${V8_VER}"
+          fi
+
+          V8_BRANCH="branch-heads/$(echo $V8_VER | cut -d. -f1,2)"
+          echo "V8_VERSION=${V8_VER}" >> $GITHUB_OUTPUT
+          echo "V8_BRANCH=${V8_BRANCH}" >> $GITHUB_OUTPUT
+
+      - name: Check runner resources
+        run: |
+          set -euo pipefail
+          df -h .
+          free -h
+          AVAIL_KB=$(df . | tail -1 | awk '{print $4}')
+          AVAIL_GB=$((AVAIL_KB / 1024 / 1024))
+          if [ "$AVAIL_GB" -lt 5 ]; then
+            echo "::error::DISCO INSUFICIENTE: ${AVAIL_GB}GB (minimo 5GB)"
+            exit 1
+          fi
+
+      - name: Install build dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ccache ninja-build python3 lsb-release pkg-config
+          ccache --max-size=8G
+          ccache --zero-stats
+
+      - name: Cache depot_tools
+        uses: actions/cache@v4
+        with:
+          path: depot_tools
+          key: depot-tools-v1
+
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-cf-${{ inputs.v8_config }}-${{ steps.version.outputs.V8_VERSION }}
+          restore-keys: |
+            ccache-cf-${{ inputs.v8_config }}-
+            ccache-cf-
+
+      - name: Setup depot_tools
+        run: |
+          set -euo pipefail
+          if [ ! -d depot_tools ] || [ ! -f depot_tools/gclient ]; then
+            rm -rf depot_tools
+            git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git || {
+              echo "::error::FALHA ao clonar depot_tools!"
+              exit 1
+            }
+          fi
+          echo "$PWD/depot_tools" >> $GITHUB_PATH
+
+      - name: Fetch V8 ${{ steps.version.outputs.V8_VERSION }}
+        run: |
+          set -euo pipefail
+          V8_VERSION="${{ steps.version.outputs.V8_VERSION }}"
+          V8_BRANCH="${{ steps.version.outputs.V8_BRANCH }}"
+
+          mkdir -p v8-build && cd v8-build
+          if [ ! -d v8 ]; then
+            fetch v8 || { echo "::error::fetch v8 FALHOU!"; exit 1; }
+          fi
+
+          cd v8
+          git fetch --tags origin || { echo "::error::git fetch falhou!"; exit 1; }
+          git fetch origin "${V8_BRANCH}" || { echo "::error::git fetch ${V8_BRANCH} falhou!"; exit 1; }
+
+          if git checkout "${V8_VERSION}" 2>/dev/null; then
+            echo "::notice::Checkout tag ${V8_VERSION} OK"
+          elif git checkout "tags/${V8_VERSION}" 2>/dev/null; then
+            echo "::notice::Checkout tags/${V8_VERSION} OK"
+          else
+            echo "::error::!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+            echo "::error::TAG EXATA ${V8_VERSION} NAO ENCONTRADA!"
+            echo "::error::Usando branch ${V8_BRANCH} — PATCH LEVEL PODE DIFERIR!"
+            echo "::error::!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+            git checkout "${V8_BRANCH}" || { echo "::error::Branch falhou!"; exit 1; }
+          fi
+
+          gclient sync --with_branch_heads --with_tags -D || {
+            echo "::error::gclient sync FALHOU!"
+            exit 1
+          }
+
+      - name: Generate args.gn (${{ inputs.v8_config }})
+        run: |
+          set -euo pipefail
+          CONFIG="${{ inputs.v8_config }}"
+          OUT="v8-build/v8/out/d8-${CONFIG}"
+          mkdir -p "$OUT"
+
+          cat > "$OUT/args.gn" << 'BASEEOF'
+          v8_enable_sandbox = true
+          v8_enable_memory_corruption_api = true
+          target_cpu = "x64"
+          is_asan = false
+          treat_warnings_as_errors = false
+          cc_wrapper = "env CCACHE_SLOPPINESS=time_macros ccache"
+          BASEEOF
+
+          case "$CONFIG" in
+            fast)
+              cat >> "$OUT/args.gn" << 'EOF'
+          is_debug = false
+          dcheck_always_on = true
+          is_component_build = true
+          symbol_level = 1
+          v8_enable_backtrace = true
+          v8_enable_disassembler = true
+          v8_enable_object_print = true
+          EOF
+              ;;
+            fuzz)
+              cat >> "$OUT/args.gn" << 'EOF'
+          is_debug = false
+          dcheck_always_on = true
+          is_component_build = false
+          symbol_level = 0
+          EOF
+              ;;
+            debug)
+              cat >> "$OUT/args.gn" << 'EOF'
+          is_debug = true
+          v8_optimized_debug = false
+          v8_no_inline = true
+          dcheck_always_on = true
+          is_component_build = false
+          symbol_level = 2
+          v8_enable_backtrace = true
+          v8_enable_disassembler = true
+          v8_enable_object_print = true
+          v8_enable_verify_heap = true
+          EOF
+              ;;
+            release)
+              cat >> "$OUT/args.gn" << 'EOF'
+          is_debug = false
+          dcheck_always_on = false
+          is_component_build = false
+          symbol_level = 0
+          EOF
+              ;;
+          esac
+
+          echo "=== Generated args.gn ==="
+          cat "$OUT/args.gn"
+
+      - name: Build d8
+        run: |
+          set -euo pipefail
+          CONFIG="${{ inputs.v8_config }}"
+          cd v8-build/v8
+
+          gn gen "out/d8-${CONFIG}" || { echo "::error::gn gen FALHOU!"; exit 1; }
+
+          autoninja -C "out/d8-${CONFIG}" d8 || {
+            echo "::warning::Build falhou. Retrying com -j 2..."
+            autoninja -j 2 -C "out/d8-${CONFIG}" d8 || {
+              echo "::error::BUILD FALHOU mesmo com -j 2!"
+              exit 1
+            }
+          }
+
+          echo "::notice::Build d8-${CONFIG} completo!"
+          ccache -s
+
+      - name: Validate d8 build
+        run: |
+          set -euo pipefail
+          CONFIG="${{ inputs.v8_config }}"
+          D8="./v8-build/v8/out/d8-${CONFIG}/d8"
+
+          echo "=== [1/6] d8 executa ==="
+          $D8 -e "print('OK')" || { echo "::error::d8 NAO EXECUTA!"; exit 1; }
+
+          echo "=== [2/6] Version ==="
+          $D8 -e "print('V8 version: ' + version())"
+
+          echo "=== [3/6] Sandbox API ==="
+          STYPE=$($D8 --sandbox-testing -e "print(typeof Sandbox)" 2>&1 | tail -1)
+          if [ "$STYPE" != "object" ]; then
+            echo "::error::SANDBOX API NAO EXPOSTA! typeof='${STYPE}'"
+            exit 1
+          fi
+
+          echo "=== [4/6] MemoryView ==="
+          $D8 --sandbox-testing -e "
+            let m = new DataView(new Sandbox.MemoryView(0, 0x100));
+            print('MemoryView: OK');
+            print('Sandbox.base: ' + Sandbox.base);
+          " || { echo "::error::MemoryView FALHOU!"; exit 1; }
+
+          echo "=== [5/6] addrof + getSizeOf ==="
+          $D8 --sandbox-testing -e "
+            let obj = {};
+            print('addrof: 0x' + Sandbox.getAddressOf(obj).toString(16));
+            print('sizeof: ' + Sandbox.getSizeOf(obj));
+          " || { echo "::error::addrof/getSizeOf FALHOU!"; exit 1; }
+
+          echo "=== [6/6] Natives + GC ==="
+          $D8 --sandbox-testing --allow-natives-syntax --expose-gc -e "
+            gc(); %DebugPrint({}); print('OK');
+          " || { echo "::error::Natives/GC FALHOU!"; exit 1; }
+
+          echo ""
+          echo "========================================="
+          echo "  TODOS OS TESTES PASSARAM"
+          echo "  Config:  ${CONFIG}"
+          echo "  V8:      $($D8 -e 'print(version())')"
+          echo "  Target:  Cloudflare workerd"
+          echo "========================================="
+
+      - name: Upload d8 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: d8-${{ inputs.v8_config }}-cloudflare-${{ steps.version.outputs.V8_VERSION }}
+          path: |
+            v8-build/v8/out/d8-${{ inputs.v8_config }}/d8
+            v8-build/v8/out/d8-${{ inputs.v8_config }}/*.so
+            v8-build/v8/out/d8-${{ inputs.v8_config }}/snapshot_blob.bin
+            v8-build/v8/out/d8-${{ inputs.v8_config }}/icudtl.dat
+          retention-days: 90
+          if-no-files-found: error
+          compression-level: 6
