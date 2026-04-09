@@ -62,7 +62,7 @@ jobs:
 
             V8_VER=$(curl -sf --max-time 15 \
               'https://raw.githubusercontent.com/cloudflare/workerd/main/build/deps/v8.MODULE.bazel' | \
-              grep '^VERSION' | sed 's/VERSION = "//;s/"//') || true
+              grep '^VERSION' | sed 's/VERSION = "//;s/"//') || { echo "::error::FALHA ao detectar V8 do workerd!"; exit 1; }
 
             if [ -z "$V8_VER" ]; then
               echo "::error::FALHA ao detectar versao V8 do workerd!"
