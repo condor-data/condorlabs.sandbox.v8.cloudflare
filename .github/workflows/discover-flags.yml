@@ -25,7 +25,7 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Detect V8 version
         id: version
@@ -53,7 +53,7 @@ jobs:
           pip3 install pyyaml
 
       - name: Cache depot_tools
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: depot_tools
           key: depot-tools-v1
@@ -161,7 +161,7 @@ jobs:
           git push
 
       - name: Upload reference as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: v8-reference-${{ steps.version.outputs.V8_VERSION }}
           path: configs/reference/

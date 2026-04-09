@@ -36,7 +36,7 @@ jobs:
 
     steps:
       - name: Checkout workflows
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           sparse-checkout: .github
           sparse-checkout-cone-mode: true
@@ -60,7 +60,7 @@ jobs:
           fi
 
       - name: Install Rust
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: cloudflare/lol-html
           ref: ${{ steps.version.outputs.LOL_REF }}
@@ -85,7 +85,7 @@ jobs:
           sudo systemctl stop apport 2>/dev/null || true
 
       - name: Cache Cargo
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry
@@ -123,7 +123,7 @@ jobs:
 
       - name: Upload build artifacts
         if: inputs.build_type != 'test'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: lol-html-${{ inputs.build_type }}-${{ steps.version.outputs.LOL_REF }}
           path: |
@@ -134,7 +134,7 @@ jobs:
 
       - name: Upload core dumps (se existirem)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coredumps-lol-html-${{ inputs.build_type }}
           path: /tmp/coredumps/
