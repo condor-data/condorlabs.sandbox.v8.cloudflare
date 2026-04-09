@@ -56,10 +56,6 @@
 #include <cstdlib>
 #include <ctime>
 
-#if _WIN32
-#include <thread>
-#endif
-
 namespace workerd::server {
 
 namespace {
@@ -2980,10 +2976,10 @@ class Server::WorkerService final: public Service,
       actors.clear();
     }
 
-    // Aborts all actors, cancels all alarms, and deletes all underlying storage files so that
+    // Aborts all actors, cancels all alarms, and clears all underlying storage so that
     // DOs can be recreated with completely clean state. Useful for test isolation.
     void deleteAll(kj::Maybe<const kj::Exception&> reason) {
-      // Abort all running actors so they release their file handles.
+      // Abort all running actors so they release their SQLite connections.
       abortAll(reason);
 
       // Cancel all pending alarms (in-memory tasks + persistent DB rows).
@@ -2991,41 +2987,24 @@ class Server::WorkerService final: public Service,
         scheduler->deleteAll();
       }
 
-      // Delete per-actor storage files from disk. Skip metadata.sqlite (and its WAL/journal
-      // companions) because the AlarmScheduler still has it open — its rows were already
-      // wiped by deleteAll() above.
+      // Clear per-actor storage by truncating each database file to zero bytes. When the
+      // next actor opens the same path, SQLite sees a zero-length file and creates a fresh
+      // database. We truncate instead of deleting because on Windows the native SQLite VFS
+      // opens files without FILE_SHARE_DELETE, so DeleteFileW() can fail with
+      // ERROR_SHARING_VIOLATION if the OS has not yet fully released the handle after
+      // sqlite3_close(). Truncation does not require delete access.
+      // Skip metadata.sqlite (and its WAL/journal companions) because the AlarmScheduler
+      // still has it open — its rows were already wiped by deleteAll() above.
       KJ_IF_SOME(as, actorStorage) {
         for (auto& entry: as.directory->listNames()) {
           if (!entry.startsWith("metadata.sqlite")) {
-            removeActorFile(*as.directory, kj::Path({entry}));
+            auto path = kj::Path({entry});
+            KJ_IF_SOME(file, as.directory->tryOpenFile(path, kj::WriteMode::MODIFY)) {
+              file->truncate(0);
+            }
           }
         }
       }
-    }
-
-    static void removeActorFile(const kj::Directory& dir, kj::Path path) {
-#if _WIN32
-      // On Windows, file handles may not be immediately released after sqlite3_close()
-      // completes. The native Windows SQLite VFS (used on Windows per the special-case in
-      // SqliteDatabase::init()) releases file handles via CloseHandle(), but the OS kernel
-      // may not fully relinquish the file before the next filesystem operation. This causes
-      // DeleteFileW() to fail with ERROR_SHARING_VIOLATION. Retry briefly to handle this.
-      // This is only called from deleteAllDurableObjects() which is a workerd:unsafe test API.
-      for (uint attempt = 0;; ++attempt) {
-        auto maybeException =
-            kj::runCatchingExceptions([&]() { dir.remove(path); });
-        KJ_IF_SOME(exception, maybeException) {
-          if (attempt >= 10) {
-            kj::throwFatalException(kj::mv(exception));
-          }
-          std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        } else {
-          return;
-        }
-      }
-#else
-      dir.remove(path);
-#endif
     }
 
    private:
