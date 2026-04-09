@@ -21,7 +21,7 @@ on:
           - tsan
           - ubsan
       build_mode:
-        description: "d8-standalone (GN) ou workerd-full (Bazel, requer >=25GB)"
+        description: "d8-standalone (GN, ~15min) ou workerd-full (Bazel, ~45min, ~30GB disco)"
         required: true
         default: "d8-standalone"
         type: choice
@@ -44,17 +44,29 @@ jobs:
         if: inputs.build_mode == 'workerd-full'
         run: |
           set -euo pipefail
-          if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
-            AVAIL_KB=$(df . | tail -1 | awk '{print $4}')
-            AVAIL_GB=$((AVAIL_KB / 1024 / 1024))
-            RAM_GB=$(free -g | awk '/Mem:/{print $2}')
-            if [ "$AVAIL_GB" -lt 25 ] || [ "$RAM_GB" -lt 14 ]; then
-              echo "::error::WORKERD-FULL NAO PODE RODAR NESTE RUNNER!"
-              echo "::error::Requer >=25GB disco + >=14GB RAM. Tem: ${AVAIL_GB}GB + ${RAM_GB}GB"
-              echo "::error::Use build_mode=d8-standalone ou self-hosted runner."
-              exit 1
-            fi
+          echo "=== Runner resources ==="
+          df -h .
+          free -h
+          echo "CPUs: $(nproc)"
+
+          AVAIL_KB=$(df . | tail -1 | awk '{print $4}')
+          AVAIL_GB=$((AVAIL_KB / 1024 / 1024))
+          RAM_GB=$(free -g | awk '/Mem:/{print $2}')
+
+          echo ""
+          echo "Disco: ${AVAIL_GB}GB | RAM: ${RAM_GB}GB"
+          echo "Requer: ~30GB disco + ~12GB RAM para Bazel build completo"
+
+          if [ "$AVAIL_GB" -lt 30 ]; then
+            echo "::error::DISCO INSUFICIENTE para workerd-full: ${AVAIL_GB}GB (minimo 30GB)"
+            exit 1
           fi
+          if [ "$RAM_GB" -lt 10 ]; then
+            echo "::error::RAM INSUFICIENTE para workerd-full: ${RAM_GB}GB (minimo 10GB)"
+            exit 1
+          fi
+
+          echo "::notice::Runner OK para workerd-full (${AVAIL_GB}GB disco, ${RAM_GB}GB RAM)"
 
       - name: Detect V8 version from workerd
         id: version
