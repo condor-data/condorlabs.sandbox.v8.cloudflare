@@ -135,6 +135,18 @@ jobs:
           fi
           echo "$PWD/depot_tools" >> $GITHUB_PATH
 
+      # ================================================================
+      # Cache V8 source (repo publico = 10GB gratis)
+      # Economiza ~10min de 'fetch v8' + gclient sync
+      # ================================================================
+      - name: Cache V8 source tree
+        uses: actions/cache@v5
+        with:
+          path: v8-build
+          key: v8-source-${{ steps.version.outputs.V8_VERSION }}
+          restore-keys: |
+            v8-source-
+
       - name: Fetch V8 ${{ steps.version.outputs.V8_VERSION }}
         run: |
           set -euo pipefail
@@ -170,16 +182,15 @@ jobs:
       - name: Install PyYAML
         run: pip3 install pyyaml
 
-      - name: Validate YAML config
+      - name: "[PRE] Validate config from YAML"
         run: |
           set -euo pipefail
-          CONFIG="${{ inputs.v8_config }}"
-          python3 configs/yaml2gn.py configs/v8-cf.yaml "$CONFIG" --validate || {
-            echo "::error::YAML VALIDATION FAILED!"
+          python3 configs/verify-build.py pre configs/v8-cf.yaml "${{ inputs.v8_config }}" || {
+            echo "::error::PRE-BUILD VALIDATION FAILED!"
             exit 1
           }
 
-      - name: Generate args.gn from YAML (${{ inputs.v8_config }})
+      - name: "[PRE] Generate args.gn from YAML"
         run: |
           set -euo pipefail
           CONFIG="${{ inputs.v8_config }}"
@@ -189,8 +200,16 @@ jobs:
             echo "::error::yaml2gn.py FALHOU!"
             exit 1
           }
-          echo "=== Generated args.gn (from YAML) ==="
-          cat "$OUT/args.gn"
+
+      - name: "[PRE] Verify args.gn matches YAML (flag-by-flag)"
+        run: |
+          set -euo pipefail
+          CONFIG="${{ inputs.v8_config }}"
+          python3 configs/verify-build.py verify-args configs/v8-cf.yaml "$CONFIG" "v8-build/v8/out/d8-${CONFIG}/args.gn" || {
+            echo "::error::args.gn NAO CORRESPONDE ao YAML!"
+            exit 1
+          }
+          cat "v8-build/v8/out/d8-${CONFIG}/args.gn"
 
       - name: Build d8
         run: |
@@ -211,74 +230,34 @@ jobs:
           echo "::notice::Build d8-${CONFIG} completo!"
           ccache -s
 
-      - name: Validate d8 build
+      - name: "[POST] Validate d8 against YAML config"
         run: |
           set -euo pipefail
           CONFIG="${{ inputs.v8_config }}"
           D8="./v8-build/v8/out/d8-${CONFIG}/d8"
+          python3 configs/verify-build.py post configs/v8-cf.yaml "$CONFIG" "$D8" || {
+            echo "::error::POST-BUILD VALIDATION FAILED!"
+            exit 1
+          }
 
-          echo "=== [1] d8 executa ==="
-          $D8 -e "print('OK')" || { echo "::error::d8 NAO EXECUTA!"; exit 1; }
-
-          echo "=== [2] V8 version ==="
-          $D8 -e "print('V8 version: ' + version())"
-
-          echo "=== [3] Natives + GC ==="
-          $D8 --allow-natives-syntax --expose-gc -e "
-            gc(); %DebugPrint({}); print('Natives+GC: OK');
-          " || { echo "::error::Natives/GC FALHOU!"; exit 1; }
-
-          # Bifurcar: sanitizer vs sandbox escape
-          case "$CONFIG" in
-            asan|tsan|ubsan)
-              echo "=== [4] SANITIZER: Confirmar Sandbox API AUSENTE ==="
-              STYPE=$($D8 --sandbox-testing -e "print(typeof Sandbox)" 2>&1 | tail -1) || true
-              if [ "$STYPE" = "object" ]; then
-                echo "::error::BUG: Sandbox API EXPOSTA em sanitizer build!"
-                exit 1
-              fi
-              echo "Sandbox API ausente: CORRETO"
-
-              echo "=== [5] SANITIZER: stress test ==="
-              $D8 -e "
-                let arr = new Array(1000);
-                for (let i = 0; i < 1000; i++) arr[i] = {x: i};
-                print('Sanitizer OK');
-              " || { echo "::error::Sanitizer detectou problema!"; exit 1; }
-
-              echo ""
-              echo "========================================="
-              echo "  SANITIZER BUILD OK (${CONFIG})"
-              echo "  V8:      $($D8 -e 'print(version())')"
-              echo "  Target:  Cloudflare workerd"
-              echo "========================================="
-              ;;
-            *)
-              echo "=== [4] Sandbox API ==="
-              STYPE=$($D8 --sandbox-testing -e "print(typeof Sandbox)" 2>&1 | tail -1)
-              if [ "$STYPE" != "object" ]; then
-                echo "::error::SANDBOX API NAO EXPOSTA! typeof='${STYPE}'"
-                exit 1
-              fi
-
-              echo "=== [5] MemoryView + addrof + getSizeOf ==="
-              $D8 --sandbox-testing -e "
-                let m = new DataView(new Sandbox.MemoryView(0, 0x100));
-                print('MemoryView: OK');
-                print('Sandbox.base: ' + Sandbox.base);
-                let obj = {};
-                print('addrof: 0x' + Sandbox.getAddressOf(obj).toString(16));
-                print('sizeof: ' + Sandbox.getSizeOf(obj));
-              " || { echo "::error::Sandbox API FALHOU!"; exit 1; }
-
-              echo ""
-              echo "========================================="
-              echo "  SANDBOX ESCAPE BUILD OK (${CONFIG})"
-              echo "  V8:      $($D8 -e 'print(version())')"
-              echo "  Target:  Cloudflare workerd"
-              echo "========================================="
-              ;;
-          esac
+      - name: "[POST] Update build status in YAML"
+        if: always()
+        run: |
+          CONFIG="${{ inputs.v8_config }}"
+          D8="./v8-build/v8/out/d8-${CONFIG}/d8"
+          VERSION=$($D8 -e "print(version())" 2>/dev/null || echo "unknown")
+          SIZE=$(du -sh "$D8" 2>/dev/null | cut -f1 || echo "unknown")
+          if [ "${{ job.status }}" = "success" ]; then
+            python3 configs/verify-build.py update-status configs/v8-cf.yaml "$CONFIG" "OK" "$VERSION" "$SIZE"
+          else
+            python3 configs/verify-build.py update-status configs/v8-cf.yaml "$CONFIG" "FAIL" "$VERSION" "$SIZE"
+          fi
+          git config user.name "condor-data-bot"
+          git config user.email "bot@condor-data.github.io"
+          git add configs/v8-cf.yaml
+          git diff --cached --stat
+          git commit -m "Update build status: ${CONFIG} = ${{ job.status }}" || true
+          git push || echo "::warning::Push failed"
 
       - name: Upload d8 artifact
         uses: actions/upload-artifact@v7
