@@ -3012,9 +3012,9 @@ class Server::WorkerService final: public Service,
       // DeleteFileW() to fail with ERROR_SHARING_VIOLATION. Retry briefly to handle this.
       // This is only called from deleteAllDurableObjects() which is a workerd:unsafe test API.
       for (uint attempt = 0;; ++attempt) {
-        KJ_IF_SOME(exception, kj::runCatchingExceptions([&]() {
-          dir.remove(path);
-        })) {
+        auto maybeException =
+            kj::runCatchingExceptions([&]() { dir.remove(path); });
+        KJ_IF_SOME(exception, maybeException) {
           if (attempt >= 10) {
             kj::throwFatalException(kj::mv(exception));
           }
