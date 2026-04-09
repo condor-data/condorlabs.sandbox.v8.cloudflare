@@ -1,27 +1,14 @@
-###############################################################################
-# Build d8 com V8 version do Cloudflare workerd
-#
-# Extrai a versao V8 pinada no workerd (build/deps/v8.MODULE.bazel),
-# faz fetch do V8 dessa versao do googlesource, e compila d8 com GN.
-# Nao compila o workerd inteiro (Bazel) — apenas o d8 standalone.
-#
-# Runner: ubuntu-latest (4 vCPU, 16GB RAM, 14GB SSD) — GRATIS
-# Trigger: APENAS manual (workflow_dispatch)
-# Secrets: ZERO
-# Custo: $0
-###############################################################################
 name: "Build d8 (Cloudflare workerd V8)"
-
 on:
   workflow_dispatch:
     inputs:
       v8_version:
-        description: "V8 version override (ex: 14.7.173.16). Vazio = auto-detect do workerd."
+        description: "V8 version override. Vazio = auto-detect do workerd."
         required: false
         default: ""
         type: string
       v8_config:
-        description: "Build config"
+        description: "Build config (do configs/v8-cf.yaml)"
         required: true
         default: "fast"
         type: choice
@@ -33,270 +20,85 @@ on:
           - asan
           - tsan
           - ubsan
+      build_mode:
+        description: "d8-standalone (GN) ou workerd-full (Bazel, requer >=25GB)"
+        required: true
+        default: "d8-standalone"
+        type: choice
+        options:
+          - d8-standalone
+          - workerd-full
+
+permissions:
+  contents: write
 
 jobs:
-  build-d8:
+  pipeline:
     runs-on: ubuntu-latest
     timeout-minutes: 180
-
     steps:
-      - name: Checkout workflows
+      - name: Checkout
         uses: actions/checkout@v6
-        with:
-          sparse-checkout: .github
-          sparse-checkout-cone-mode: true
 
-      # ================================================================
-      # Auto-detect V8 version do workerd (build/deps/v8.MODULE.bazel)
-      # ================================================================
+      - name: "[GATE] Workerd-full environment check"
+        if: inputs.build_mode == 'workerd-full'
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
+            AVAIL_KB=$(df . | tail -1 | awk '{print $4}')
+            AVAIL_GB=$((AVAIL_KB / 1024 / 1024))
+            RAM_GB=$(free -g | awk '/Mem:/{print $2}')
+            if [ "$AVAIL_GB" -lt 25 ] || [ "$RAM_GB" -lt 14 ]; then
+              echo "::error::WORKERD-FULL NAO PODE RODAR NESTE RUNNER!"
+              echo "::error::Requer >=25GB disco + >=14GB RAM. Tem: ${AVAIL_GB}GB + ${RAM_GB}GB"
+              echo "::error::Use build_mode=d8-standalone ou self-hosted runner."
+              exit 1
+            fi
+          fi
+
       - name: Detect V8 version from workerd
         id: version
         run: |
           set -euo pipefail
-
           if [ -n "${{ inputs.v8_version }}" ]; then
             V8_VER="${{ inputs.v8_version }}"
-            echo "::notice::OVERRIDE MANUAL: V8 ${V8_VER}"
+            echo "::notice::OVERRIDE: V8 ${V8_VER}"
           else
-            echo "::group::Auto-detecting V8 version from workerd..."
-
             V8_VER=$(curl -sf --max-time 15 \
               'https://raw.githubusercontent.com/cloudflare/workerd/main/build/deps/v8.MODULE.bazel' | \
-              grep '^VERSION' | sed 's/VERSION = "//;s/"//') || { echo "::error::FALHA ao detectar V8 do workerd!"; exit 1; }
-
-            if [ -z "$V8_VER" ]; then
-              echo "::error::FALHA ao detectar versao V8 do workerd!"
-              echo "::error::raw.githubusercontent.com pode estar fora do ar."
-              echo "::error::Use o input v8_version para especificar manualmente."
-              exit 1
-            fi
-
-            echo "::endgroup::"
-            echo "::notice::Auto-detected: Cloudflare workerd V8 ${V8_VER}"
+              grep '^VERSION' | sed 's/VERSION = "//;s/"//') || \
+              { echo "::error::FALHA ao detectar V8 do workerd!"; exit 1; }
+            [ -z "$V8_VER" ] && { echo "::error::V8 version vazia!"; exit 1; }
+            echo "::notice::Cloudflare workerd V8: ${V8_VER}"
           fi
-
           V8_BRANCH="branch-heads/$(echo $V8_VER | cut -d. -f1,2)"
           echo "V8_VERSION=${V8_VER}" >> $GITHUB_OUTPUT
           echo "V8_BRANCH=${V8_BRANCH}" >> $GITHUB_OUTPUT
 
-      - name: Check runner resources
-        run: |
-          set -euo pipefail
-          df -h .
-          free -h
-          AVAIL_KB=$(df . | tail -1 | awk '{print $4}')
-          AVAIL_GB=$((AVAIL_KB / 1024 / 1024))
-          if [ "$AVAIL_GB" -lt 5 ]; then
-            echo "::error::DISCO INSUFICIENTE: ${AVAIL_GB}GB (minimo 5GB)"
-            exit 1
-          fi
-
-      - name: Enable core dumps
-        run: |
-          ulimit -c unlimited
-          sudo mkdir -p /tmp/coredumps
-          echo '/tmp/coredumps/core.%e.%p.%t' | sudo tee /proc/sys/kernel/core_pattern
-          sudo systemctl disable apport 2>/dev/null || true
-          sudo systemctl stop apport 2>/dev/null || true
-          echo "::notice::Core dumps habilitados em /tmp/coredumps/"
-
-      - name: Install build dependencies
-        run: |
-          set -euo pipefail
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq ccache ninja-build python3 lsb-release pkg-config
-          ccache --max-size=8G
-          ccache --zero-stats
-
-      - name: Cache depot_tools
-        uses: actions/cache@v5
+      - name: "Phase 1: Pre-validate"
+        uses: ./.github/actions/pre-validate
         with:
-          path: depot_tools
-          key: depot-tools-v1
+          yaml_file: configs/v8-cf.yaml
+          config: ${{ inputs.v8_config }}
 
-      - name: Cache ccache
-        uses: actions/cache@v5
+      - name: "Phase 2: Setup V8"
+        uses: ./.github/actions/setup-v8
         with:
-          path: ~/.ccache
-          key: ccache-cf-${{ inputs.v8_config }}-${{ steps.version.outputs.V8_VERSION }}
-          restore-keys: |
-            ccache-cf-${{ inputs.v8_config }}-
-            ccache-cf-
+          v8_version: ${{ steps.version.outputs.V8_VERSION }}
+          v8_branch: ${{ steps.version.outputs.V8_BRANCH }}
+          config: ${{ inputs.v8_config }}
 
-      - name: Setup depot_tools
-        run: |
-          set -euo pipefail
-          if [ ! -d depot_tools ] || [ ! -f depot_tools/gclient ]; then
-            rm -rf depot_tools
-            git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git || {
-              echo "::error::FALHA ao clonar depot_tools!"
-              exit 1
-            }
-          fi
-          echo "$PWD/depot_tools" >> $GITHUB_PATH
-
-      # ================================================================
-      # Cache V8 source (repo publico = 10GB gratis)
-      # Economiza ~10min de 'fetch v8' + gclient sync
-      # ================================================================
-      - name: Cache V8 source tree
-        uses: actions/cache@v5
+      - name: "Phase 3: Build d8"
+        id: build
+        uses: ./.github/actions/build-d8
         with:
-          path: v8-build
-          key: v8-source-${{ steps.version.outputs.V8_VERSION }}
-          restore-keys: |
-            v8-source-
+          config: ${{ inputs.v8_config }}
 
-      - name: Fetch V8 ${{ steps.version.outputs.V8_VERSION }}
-        run: |
-          set -euo pipefail
-          V8_VERSION="${{ steps.version.outputs.V8_VERSION }}"
-          V8_BRANCH="${{ steps.version.outputs.V8_BRANCH }}"
-
-          mkdir -p v8-build && cd v8-build
-          if [ ! -d v8 ]; then
-            fetch v8 || { echo "::error::fetch v8 FALHOU!"; exit 1; }
-          fi
-
-          cd v8
-          git fetch --tags origin || { echo "::error::git fetch falhou!"; exit 1; }
-          git fetch origin "${V8_BRANCH}" || { echo "::error::git fetch ${V8_BRANCH} falhou!"; exit 1; }
-
-          if git checkout "${V8_VERSION}" 2>/dev/null; then
-            echo "::notice::Checkout tag ${V8_VERSION} OK"
-          elif git checkout "tags/${V8_VERSION}" 2>/dev/null; then
-            echo "::notice::Checkout tags/${V8_VERSION} OK"
-          else
-            echo "::error::!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-            echo "::error::TAG EXATA ${V8_VERSION} NAO ENCONTRADA!"
-            echo "::error::Usando branch ${V8_BRANCH} — PATCH LEVEL PODE DIFERIR!"
-            echo "::error::!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-            git checkout "${V8_BRANCH}" || { echo "::error::Branch falhou!"; exit 1; }
-          fi
-
-          gclient sync --with_branch_heads --with_tags -D || {
-            echo "::error::gclient sync FALHOU!"
-            exit 1
-          }
-
-      - name: Install PyYAML
-        run: pip3 install pyyaml
-
-      - name: "[PRE] Validate config from YAML"
-        run: |
-          set -euo pipefail
-          python3 configs/verify-build.py pre configs/v8-cf.yaml "${{ inputs.v8_config }}" || {
-            echo "::error::PRE-BUILD VALIDATION FAILED!"
-            exit 1
-          }
-
-      - name: "[PRE] Generate args.gn from YAML"
-        run: |
-          set -euo pipefail
-          CONFIG="${{ inputs.v8_config }}"
-          OUT="v8-build/v8/out/d8-${CONFIG}"
-          mkdir -p "$OUT"
-          python3 configs/yaml2gn.py configs/v8-cf.yaml "$CONFIG" > "$OUT/args.gn" || {
-            echo "::error::yaml2gn.py FALHOU!"
-            exit 1
-          }
-
-      - name: "[PRE] Verify args.gn matches YAML (flag-by-flag)"
-        run: |
-          set -euo pipefail
-          CONFIG="${{ inputs.v8_config }}"
-          python3 configs/verify-build.py verify-args configs/v8-cf.yaml "$CONFIG" "v8-build/v8/out/d8-${CONFIG}/args.gn" || {
-            echo "::error::args.gn NAO CORRESPONDE ao YAML!"
-            exit 1
-          }
-          cat "v8-build/v8/out/d8-${CONFIG}/args.gn"
-
-      - name: Build d8
-        run: |
-          set -euo pipefail
-          CONFIG="${{ inputs.v8_config }}"
-          cd v8-build/v8
-
-          gn gen "out/d8-${CONFIG}" || { echo "::error::gn gen FALHOU!"; exit 1; }
-
-          autoninja -C "out/d8-${CONFIG}" d8 || {
-            echo "::warning::Build falhou. Retrying com -j 2..."
-            autoninja -j 2 -C "out/d8-${CONFIG}" d8 || {
-              echo "::error::BUILD FALHOU mesmo com -j 2!"
-              exit 1
-            }
-          }
-
-          echo "::notice::Build d8-${CONFIG} completo!"
-          ccache -s
-
-      - name: "[POST] Validate d8 against YAML config"
-        run: |
-          set -euo pipefail
-          CONFIG="${{ inputs.v8_config }}"
-          D8="./v8-build/v8/out/d8-${CONFIG}/d8"
-          python3 configs/verify-build.py post configs/v8-cf.yaml "$CONFIG" "$D8" || {
-            echo "::error::POST-BUILD VALIDATION FAILED!"
-            exit 1
-          }
-
-      - name: "[POST] Introspect binary (gn desc + nm + runtime probe)"
-        run: |
-          set -euo pipefail
-          CONFIG="${{ inputs.v8_config }}"
-          D8="./v8-build/v8/out/d8-${CONFIG}/d8"
-          BUILD_DIR="v8-build/v8/out/d8-${CONFIG}"
-          python3 configs/verify-build.py introspect configs/v8-cf.yaml "$CONFIG" "$D8" "$BUILD_DIR" || {
-            echo "::error::INTROSPECT FAILED!"
-            exit 1
-          }
-
-      - name: "[POST] Upload introspection report"
-        if: always()
-        uses: actions/upload-artifact@v7
+      - name: "Phase 4: Post-validate"
+        if: always() && !cancelled()
+        uses: ./.github/actions/post-validate
         with:
-          name: introspect-${{ inputs.v8_config }}-${{ steps.version.outputs.V8_VERSION }}
-          path: configs/reference/introspect-*.json
-          retention-days: 90
-          if-no-files-found: ignore
-
-      - name: "[POST] Update build status in YAML"
-        if: always()
-        run: |
-          CONFIG="${{ inputs.v8_config }}"
-          D8="./v8-build/v8/out/d8-${CONFIG}/d8"
-          VERSION=$($D8 -e "print(version())" 2>&1 || echo "unknown")
-          SIZE=$(du -sh "$D8" 2>&1 | cut -f1 || echo "unknown")
-          if [ "${{ job.status }}" = "success" ]; then
-            python3 configs/verify-build.py update-status configs/v8-cf.yaml "$CONFIG" "OK" "$VERSION" "$SIZE"
-          else
-            python3 configs/verify-build.py update-status configs/v8-cf.yaml "$CONFIG" "FAIL" "$VERSION" "$SIZE"
-          fi
-          git config user.name "condor-data-bot"
-          git config user.email "bot@condor-data.github.io"
-          git add configs/v8-cf.yaml
-          git diff --cached --stat
-          git commit -m "Update build status: ${CONFIG} = ${{ job.status }}" || true
-          git push || echo "::warning::Push failed"
-
-      - name: Upload d8 artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: d8-${{ inputs.v8_config }}-cloudflare-${{ steps.version.outputs.V8_VERSION }}
-          path: |
-            v8-build/v8/out/d8-${{ inputs.v8_config }}/d8
-            v8-build/v8/out/d8-${{ inputs.v8_config }}/*.so
-            v8-build/v8/out/d8-${{ inputs.v8_config }}/snapshot_blob.bin
-            v8-build/v8/out/d8-${{ inputs.v8_config }}/icudtl.dat
-          retention-days: 90
-          if-no-files-found: error
-          compression-level: 6
-
-      - name: Upload core dumps (se existirem)
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: coredumps-${{ inputs.v8_config }}-${{ steps.version.outputs.V8_VERSION }}
-          path: /tmp/coredumps/
-          retention-days: 30
-          if-no-files-found: ignore
+          yaml_file: configs/v8-cf.yaml
+          config: ${{ inputs.v8_config }}
+          v8_version: ${{ steps.version.outputs.V8_VERSION }}
+          build_result: ${{ steps.build.outcome }}

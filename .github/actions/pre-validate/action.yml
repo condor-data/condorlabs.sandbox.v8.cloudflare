@@ -1,0 +1,86 @@
+name: "Pre-validate config"
+description: "Valida YAML, gera args.gn, verifica flag-by-flag contra o YAML"
+
+inputs:
+  yaml_file:
+    description: "Path do YAML config (ex: configs/v8-chrome.yaml)"
+    required: true
+  config:
+    description: "Nome do config (ex: fast, fuzz, tsan)"
+    required: true
+
+outputs:
+  family:
+    description: "Familia do config (sandbox ou sanitizer)"
+    value: ${{ steps.validate.outputs.FAMILY }}
+  args_gn_path:
+    description: "Path do args.gn gerado"
+    value: ${{ steps.generate.outputs.ARGS_GN_PATH }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install PyYAML
+      shell: bash
+      run: pip3 install pyyaml
+
+    - name: "[PRE] Validate YAML config"
+      id: validate
+      shell: bash
+      run: |
+        echo "::group::Pre-validate: ${{ inputs.config }}"
+        set -euo pipefail
+
+        python3 configs/verify-build.py pre ${{ inputs.yaml_file }} ${{ inputs.config }} || {
+          echo "::endgroup::"
+          echo "::error::PRE-BUILD VALIDATION FAILED para config '${{ inputs.config }}'!"
+          echo "::error::Edite ${{ inputs.yaml_file }} e corrija os erros."
+          exit 1
+        }
+
+        # Extrair family para output
+        FAMILY=$(python3 -c "
+        import yaml
+        with open('${{ inputs.yaml_file }}') as f:
+            cfg = yaml.safe_load(f)
+        print(cfg['configs']['${{ inputs.config }}']['family'])
+        ")
+        echo "FAMILY=${FAMILY}" >> $GITHUB_OUTPUT
+        echo "Config family: ${FAMILY}"
+        echo "::endgroup::"
+
+    - name: "[PRE] Generate args.gn from YAML"
+      id: generate
+      shell: bash
+      run: |
+        echo "::group::Generate args.gn"
+        set -euo pipefail
+        CONFIG="${{ inputs.config }}"
+        OUT="v8-build/v8/out/d8-${CONFIG}"
+        mkdir -p "$OUT"
+
+        python3 configs/yaml2gn.py ${{ inputs.yaml_file }} "$CONFIG" > "$OUT/args.gn" || {
+          echo "::endgroup::"
+          echo "::error::yaml2gn.py FALHOU para config '${CONFIG}'!"
+          exit 1
+        }
+
+        echo "ARGS_GN_PATH=${OUT}/args.gn" >> $GITHUB_OUTPUT
+        echo "::endgroup::"
+
+    - name: "[PRE] Verify args.gn matches YAML (flag-by-flag)"
+      shell: bash
+      run: |
+        echo "::group::Verify args.gn == YAML"
+        set -euo pipefail
+        CONFIG="${{ inputs.config }}"
+
+        python3 configs/verify-build.py verify-args ${{ inputs.yaml_file }} "$CONFIG" "v8-build/v8/out/d8-${CONFIG}/args.gn" || {
+          echo "::endgroup::"
+          echo "::error::args.gn NAO CORRESPONDE ao YAML! Flags divergentes."
+          exit 1
+        }
+
+        echo "=== args.gn gerado (validado) ==="
+        cat "v8-build/v8/out/d8-${CONFIG}/args.gn"
+        echo "::endgroup::"

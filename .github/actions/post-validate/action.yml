@@ -1,0 +1,132 @@
+name: "Post-validate build"
+description: "Testa d8 contra YAML, faz introspection, upload artifacts, atualiza status"
+
+inputs:
+  yaml_file:
+    description: "Path do YAML config"
+    required: true
+  config:
+    description: "Build config name"
+    required: true
+  v8_version:
+    description: "V8 version"
+    required: true
+  build_result:
+    description: "Resultado do step de build (success/failure)"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: "[POST] Validate d8 against YAML config"
+      if: inputs.build_result == 'success'
+      shell: bash
+      run: |
+        echo "::group::Post-validate: ${{ inputs.config }}"
+        set -euo pipefail
+        CONFIG="${{ inputs.config }}"
+        D8="./v8-build/v8/out/d8-${CONFIG}/d8"
+
+        python3 configs/verify-build.py post ${{ inputs.yaml_file }} "$CONFIG" "$D8" || {
+          echo "::endgroup::"
+          echo "::error::POST-BUILD VALIDATION FAILED!"
+          exit 1
+        }
+        echo "::endgroup::"
+
+    - name: "[POST] Introspect binary (gn desc + nm + runtime probe)"
+      if: inputs.build_result == 'success'
+      shell: bash
+      run: |
+        echo "::group::Introspect: ${{ inputs.config }}"
+        set -euo pipefail
+        CONFIG="${{ inputs.config }}"
+        D8="./v8-build/v8/out/d8-${CONFIG}/d8"
+        BUILD_DIR="v8-build/v8/out/d8-${CONFIG}"
+
+        python3 configs/verify-build.py introspect ${{ inputs.yaml_file }} "$CONFIG" "$D8" "$BUILD_DIR" || {
+          echo "::endgroup::"
+          echo "::error::INTROSPECT FAILED!"
+          exit 1
+        }
+        echo "::endgroup::"
+
+    - name: "[POST] Upload d8 artifact"
+      if: inputs.build_result == 'success'
+      uses: actions/upload-artifact@v7
+      with:
+        name: d8-${{ inputs.config }}-${{ inputs.v8_version }}
+        path: |
+          v8-build/v8/out/d8-${{ inputs.config }}/d8
+          v8-build/v8/out/d8-${{ inputs.config }}/*.so
+          v8-build/v8/out/d8-${{ inputs.config }}/snapshot_blob.bin
+          v8-build/v8/out/d8-${{ inputs.config }}/icudtl.dat
+        retention-days: 90
+        if-no-files-found: error
+        compression-level: 6
+
+    - name: "[POST] Upload introspection report"
+      uses: actions/upload-artifact@v7
+      with:
+        name: introspect-${{ inputs.config }}-${{ inputs.v8_version }}
+        path: configs/reference/introspect-*.json
+        retention-days: 90
+        if-no-files-found: ignore
+
+    - name: "[POST] Upload core dumps"
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: coredumps-${{ inputs.config }}-${{ inputs.v8_version }}
+        path: /tmp/coredumps/
+        retention-days: 30
+        if-no-files-found: ignore
+
+    - name: "[POST] Update build status in YAML"
+      if: always()
+      shell: bash
+      run: |
+        CONFIG="${{ inputs.config }}"
+        D8="./v8-build/v8/out/d8-${CONFIG}/d8"
+        VERSION=$($D8 -e "print(version())" 2>&1 || echo "unknown")
+        SIZE=$(du -sh "$D8" 2>&1 | cut -f1 || echo "unknown")
+
+        if [ "${{ inputs.build_result }}" = "success" ]; then
+          python3 configs/verify-build.py update-status ${{ inputs.yaml_file }} "$CONFIG" "OK" "$VERSION" "$SIZE"
+        else
+          python3 configs/verify-build.py update-status ${{ inputs.yaml_file }} "$CONFIG" "FAIL" "$VERSION" "$SIZE"
+        fi
+
+        git config user.name "condor-data-bot"
+        git config user.email "bot@condor-data.github.io"
+        git add ${{ inputs.yaml_file }}
+        git diff --cached --stat
+        git commit -m "build-status: ${CONFIG} = ${{ inputs.build_result }} (V8 ${VERSION})" || true
+        git push || echo "::warning::Push failed (concurrent?)"
+
+    - name: "[POST] Job summary"
+      if: always()
+      shell: bash
+      run: |
+        CONFIG="${{ inputs.config }}"
+        D8="./v8-build/v8/out/d8-${CONFIG}/d8"
+        VERSION=$($D8 -e "print(version())" 2>&1 || echo "unknown")
+        SIZE=$(du -sh "$D8" 2>&1 | cut -f1 || echo "unknown")
+
+        cat >> $GITHUB_STEP_SUMMARY << EOF
+        ## Build Result: \`${{ inputs.config }}\`
+
+        | Field | Value |
+        |-------|-------|
+        | Config | \`${{ inputs.config }}\` |
+        | V8 Version | \`${VERSION}\` |
+        | Build | ${{ inputs.build_result }} |
+        | Binary Size | \`${SIZE}\` |
+        | YAML | \`${{ inputs.yaml_file }}\` |
+
+        ### Pipeline
+        - [x] Pre-validate (YAML + args.gn)
+        - [$( [ "${{ inputs.build_result }}" = "success" ] && echo "x" || echo " " )] Build d8
+        - [$( [ "${{ inputs.build_result }}" = "success" ] && echo "x" || echo " " )] Post-validate + introspect
+        - [x] Status updated
+        EOF

@@ -1,0 +1,58 @@
+name: "Build d8"
+description: "Compila d8 com gn gen + autoninja"
+
+inputs:
+  config:
+    description: "Build config name"
+    required: true
+
+outputs:
+  d8_path:
+    description: "Path do binario d8 compilado"
+    value: ${{ steps.build.outputs.D8_PATH }}
+  build_dir:
+    description: "Path do build directory"
+    value: ${{ steps.build.outputs.BUILD_DIR }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: "[BUILD] gn gen + autoninja"
+      id: build
+      shell: bash
+      run: |
+        set -euo pipefail
+        CONFIG="${{ inputs.config }}"
+        BUILD_DIR="v8-build/v8/out/d8-${CONFIG}"
+        D8_PATH="${BUILD_DIR}/d8"
+
+        echo "D8_PATH=${D8_PATH}" >> $GITHUB_OUTPUT
+        echo "BUILD_DIR=${BUILD_DIR}" >> $GITHUB_OUTPUT
+
+        echo "::group::gn gen"
+        cd v8-build/v8
+        gn gen "out/d8-${CONFIG}" || {
+          echo "::endgroup::"
+          echo "::error::gn gen FALHOU!"
+          exit 1
+        }
+        echo "::endgroup::"
+
+        echo "::group::autoninja (d8-${CONFIG})"
+        autoninja -C "out/d8-${CONFIG}" d8 || {
+          echo "::endgroup::"
+          echo "::error::BUILD FALHOU! Retrying com -j 2..."
+          echo "::group::autoninja retry (-j 2)"
+          autoninja -j 2 -C "out/d8-${CONFIG}" d8 || {
+            echo "::endgroup::"
+            echo "::error::BUILD FALHOU mesmo com -j 2!"
+            exit 1
+          }
+          echo "::endgroup::"
+        }
+        echo "::endgroup::"
+
+        echo "::group::Build stats"
+        echo "d8 binary: $(du -sh "out/d8-${CONFIG}/d8" | cut -f1)"
+        ccache -s
+        echo "::endgroup::"

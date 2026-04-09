@@ -1,0 +1,121 @@
+name: "Setup V8 build environment"
+description: "Instala deps, configura caches, faz fetch V8, habilita core dumps"
+
+inputs:
+  v8_version:
+    description: "V8 version tag (ex: 14.7.173.18)"
+    required: true
+  v8_branch:
+    description: "V8 branch (ex: branch-heads/14.7)"
+    required: true
+  config:
+    description: "Build config name"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Check runner resources
+      shell: bash
+      run: |
+        echo "::group::Runner resources"
+        df -h .
+        free -h
+        echo "CPUs: $(nproc)"
+        AVAIL_KB=$(df . | tail -1 | awk '{print $4}')
+        AVAIL_GB=$((AVAIL_KB / 1024 / 1024))
+        if [ "$AVAIL_GB" -lt 5 ]; then
+          echo "::endgroup::"
+          echo "::error::DISCO INSUFICIENTE: ${AVAIL_GB}GB (minimo 5GB)"
+          exit 1
+        fi
+        echo "Disco disponivel: ${AVAIL_GB}GB"
+        echo "::endgroup::"
+
+    - name: Enable core dumps
+      shell: bash
+      run: |
+        ulimit -c unlimited
+        sudo mkdir -p /tmp/coredumps
+        echo '/tmp/coredumps/core.%e.%p.%t' | sudo tee /proc/sys/kernel/core_pattern
+        sudo systemctl disable apport 2>/dev/null || true
+        sudo systemctl stop apport 2>/dev/null || true
+
+    - name: Install build dependencies
+      shell: bash
+      run: |
+        echo "::group::Install deps"
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq ccache ninja-build python3 lsb-release pkg-config
+        ccache --max-size=8G
+        ccache --zero-stats
+        echo "::endgroup::"
+
+    - name: Cache depot_tools
+      uses: actions/cache@v5
+      with:
+        path: depot_tools
+        key: depot-tools-v1
+
+    - name: Setup depot_tools
+      shell: bash
+      run: |
+        if [ ! -d depot_tools ] || [ ! -f depot_tools/gclient ]; then
+          rm -rf depot_tools
+          git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git || {
+            echo "::error::FALHA ao clonar depot_tools!"
+            exit 1
+          }
+        fi
+        echo "$PWD/depot_tools" >> $GITHUB_PATH
+
+    - name: Cache ccache
+      uses: actions/cache@v5
+      with:
+        path: ~/.ccache
+        key: ccache-${{ inputs.config }}-${{ inputs.v8_version }}
+        restore-keys: |
+          ccache-${{ inputs.config }}-
+          ccache-
+
+    - name: Cache V8 source tree
+      uses: actions/cache@v5
+      with:
+        path: v8-build
+        key: v8-source-${{ inputs.v8_version }}
+        restore-keys: v8-source-
+
+    - name: Fetch V8 ${{ inputs.v8_version }}
+      shell: bash
+      run: |
+        echo "::group::Fetch V8 ${{ inputs.v8_version }}"
+        set -euo pipefail
+        V8_VERSION="${{ inputs.v8_version }}"
+        V8_BRANCH="${{ inputs.v8_branch }}"
+
+        mkdir -p v8-build && cd v8-build
+        if [ ! -d v8 ]; then
+          fetch v8 || { echo "::error::fetch v8 FALHOU!"; exit 1; }
+        fi
+
+        cd v8
+        git fetch --tags origin || { echo "::error::git fetch falhou!"; exit 1; }
+        git fetch origin "${V8_BRANCH}" || { echo "::error::git fetch ${V8_BRANCH} falhou!"; exit 1; }
+
+        if git checkout "${V8_VERSION}" 2>/dev/null; then
+          echo "Checkout tag ${V8_VERSION} OK"
+        elif git checkout "tags/${V8_VERSION}" 2>/dev/null; then
+          echo "Checkout tags/${V8_VERSION} OK"
+        else
+          echo "::error::!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+          echo "::error::TAG EXATA ${V8_VERSION} NAO ENCONTRADA!"
+          echo "::error::Usando branch ${V8_BRANCH} como FALLBACK!"
+          echo "::error::!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+          git checkout "${V8_BRANCH}" || { echo "::error::Branch falhou!"; exit 1; }
+        fi
+
+        gclient sync --with_branch_heads --with_tags -D || {
+          echo "::error::gclient sync FALHOU!"
+          exit 1
+        }
+        echo "::endgroup::"
