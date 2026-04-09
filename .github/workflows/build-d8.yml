@@ -300,45 +300,68 @@ jobs:
           CONFIG="${{ inputs.v8_config }}"
           D8="./v8-build/v8/out/d8-${CONFIG}/d8"
 
-          echo "=== [1/6] d8 executa ==="
+          echo "=== [1] d8 executa ==="
           $D8 -e "print('OK')" || { echo "::error::d8 NAO EXECUTA!"; exit 1; }
 
-          echo "=== [2/6] Version ==="
+          echo "=== [2] V8 version ==="
           $D8 -e "print('V8 version: ' + version())"
 
-          echo "=== [3/6] Sandbox API ==="
-          STYPE=$($D8 --sandbox-testing -e "print(typeof Sandbox)" 2>&1 | tail -1)
-          if [ "$STYPE" != "object" ]; then
-            echo "::error::SANDBOX API NAO EXPOSTA! typeof='${STYPE}'"
-            exit 1
-          fi
-
-          echo "=== [4/6] MemoryView ==="
-          $D8 --sandbox-testing -e "
-            let m = new DataView(new Sandbox.MemoryView(0, 0x100));
-            print('MemoryView: OK');
-            print('Sandbox.base: ' + Sandbox.base);
-          " || { echo "::error::MemoryView FALHOU!"; exit 1; }
-
-          echo "=== [5/6] addrof + getSizeOf ==="
-          $D8 --sandbox-testing -e "
-            let obj = {};
-            print('addrof: 0x' + Sandbox.getAddressOf(obj).toString(16));
-            print('sizeof: ' + Sandbox.getSizeOf(obj));
-          " || { echo "::error::addrof/getSizeOf FALHOU!"; exit 1; }
-
-          echo "=== [6/6] Natives + GC ==="
-          $D8 --sandbox-testing --allow-natives-syntax --expose-gc -e "
-            gc(); %DebugPrint({}); print('OK');
+          echo "=== [3] Natives + GC ==="
+          $D8 --allow-natives-syntax --expose-gc -e "
+            gc(); %DebugPrint({}); print('Natives+GC: OK');
           " || { echo "::error::Natives/GC FALHOU!"; exit 1; }
 
-          echo ""
-          echo "========================================="
-          echo "  TODOS OS TESTES PASSARAM"
-          echo "  Config:  ${CONFIG}"
-          echo "  V8:      $($D8 -e 'print(version())')"
-          echo "  Target:  Cloudflare workerd"
-          echo "========================================="
+          # Bifurcar: sanitizer vs sandbox escape
+          case "$CONFIG" in
+            asan|tsan|ubsan)
+              echo "=== [4] SANITIZER: Confirmar Sandbox API AUSENTE ==="
+              STYPE=$($D8 --sandbox-testing -e "print(typeof Sandbox)" 2>&1 | tail -1) || true
+              if [ "$STYPE" = "object" ]; then
+                echo "::error::BUG: Sandbox API EXPOSTA em sanitizer build!"
+                exit 1
+              fi
+              echo "Sandbox API ausente: CORRETO"
+
+              echo "=== [5] SANITIZER: stress test ==="
+              $D8 -e "
+                let arr = new Array(1000);
+                for (let i = 0; i < 1000; i++) arr[i] = {x: i};
+                print('Sanitizer OK');
+              " || { echo "::error::Sanitizer detectou problema!"; exit 1; }
+
+              echo ""
+              echo "========================================="
+              echo "  SANITIZER BUILD OK (${CONFIG})"
+              echo "  V8:      $($D8 -e 'print(version())')"
+              echo "  Target:  Cloudflare workerd"
+              echo "========================================="
+              ;;
+            *)
+              echo "=== [4] Sandbox API ==="
+              STYPE=$($D8 --sandbox-testing -e "print(typeof Sandbox)" 2>&1 | tail -1)
+              if [ "$STYPE" != "object" ]; then
+                echo "::error::SANDBOX API NAO EXPOSTA! typeof='${STYPE}'"
+                exit 1
+              fi
+
+              echo "=== [5] MemoryView + addrof + getSizeOf ==="
+              $D8 --sandbox-testing -e "
+                let m = new DataView(new Sandbox.MemoryView(0, 0x100));
+                print('MemoryView: OK');
+                print('Sandbox.base: ' + Sandbox.base);
+                let obj = {};
+                print('addrof: 0x' + Sandbox.getAddressOf(obj).toString(16));
+                print('sizeof: ' + Sandbox.getSizeOf(obj));
+              " || { echo "::error::Sandbox API FALHOU!"; exit 1; }
+
+              echo ""
+              echo "========================================="
+              echo "  SANDBOX ESCAPE BUILD OK (${CONFIG})"
+              echo "  V8:      $($D8 -e 'print(version())')"
+              echo "  Target:  Cloudflare workerd"
+              echo "========================================="
+              ;;
+          esac
 
       - name: Upload d8 artifact
         uses: actions/upload-artifact@v4
@@ -361,12 +384,4 @@ jobs:
           path: /tmp/coredumps/
           retention-days: 30
           if-no-files-found: ignore
-
-      - name: Upload core dumps (se existirem)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coredumps-${{ inputs.v8_config }}-${{ steps.version.outputs.V8_VERSION }}
-          path: /tmp/coredumps/
-          retention-days: 30
           if-no-files-found: ignore
