@@ -1,9 +1,12 @@
 name: "Build d8"
-description: "Compila d8 com gn gen + autoninja"
+description: "Gera args.gn + compila d8 com gn gen + autoninja"
 
 inputs:
   config:
     description: "Build config name"
+    required: true
+  yaml_file:
+    description: "Path do YAML config (ex: configs/v8-chrome.yaml)"
     required: true
 
 outputs:
@@ -29,7 +32,7 @@ runs:
         nproc
         echo "::endgroup::"
 
-    - name: "[BUILD] gn gen + autoninja"
+    - name: "[BUILD] Generate args.gn + gn gen + autoninja"
       id: build
       shell: bash
       run: |
@@ -41,6 +44,22 @@ runs:
         echo "D8_PATH=${D8_PATH}" >> $GITHUB_OUTPUT
         echo "BUILD_DIR=${BUILD_DIR}" >> $GITHUB_OUTPUT
 
+        # ========================================
+        # GERAR args.gn AQUI — DEPOIS do setup-v8
+        # (pre-validate cria args.gn mas setup-v8
+        #  faz rm -rf v8 em clone fresh, destruindo)
+        # ========================================
+        echo "::group::Generate args.gn (inside build step)"
+        mkdir -p "$BUILD_DIR"
+        python3 configs/yaml2gn.py ${{ inputs.yaml_file }} "$CONFIG" > "$BUILD_DIR/args.gn" || {
+          echo "::endgroup::"
+          echo "::error::yaml2gn.py FALHOU para config '${CONFIG}'!"
+          exit 1
+        }
+        echo "args.gn content:"
+        cat "$BUILD_DIR/args.gn"
+        echo "::endgroup::"
+
         echo "::group::gn gen"
         cd v8-build/v8
         gn gen "out/d8-${CONFIG}" || {
@@ -48,6 +67,14 @@ runs:
           echo "::error::gn gen FALHOU!"
           exit 1
         }
+        echo "::endgroup::"
+
+        echo "::group::GN args RESOLVED (diagnostico)"
+        echo "=== Critical flags resolved by GN ==="
+        gn args "out/d8-${CONFIG}" --list --short 2>&1 | grep -E "memory_corruption|enable_sandbox|use_safe_libcxx|use_custom_libcxx" || true
+        echo ""
+        echo "=== V8_ENABLE_MEMORY_CORRUPTION_API in ninja files ==="
+        grep -r "V8_ENABLE_MEMORY_CORRUPTION_API" "out/d8-${CONFIG}/" --include="*.ninja" 2>/dev/null | head -3 || echo "NOT FOUND in any .ninja file!"
         echo "::endgroup::"
 
         echo "::group::autoninja (d8-${CONFIG})"
@@ -67,6 +94,11 @@ runs:
         echo "::group::Build stats"
         echo "d8 binary: $(du -sh "out/d8-${CONFIG}/d8" | cut -f1)"
         ccache -s
+        echo "::endgroup::"
+
+        echo "::group::Binary verification (nm)"
+        echo "=== Flag symbol type (r=readonly, b/d=writable) ==="
+        nm "out/d8-${CONFIG}/libv8.so" 2>/dev/null | grep "FLAGDEFAULT_expose_memory_corruption_api" || echo "Symbol not found in libv8.so!"
         echo "::endgroup::"
 
     - name: "[BUILD] Resources after build"
