@@ -1,0 +1,158 @@
+# V8 Build Arg Correlation Matrix
+# Manually curated rules. Validated against reference/v8-gn-args-catalog.json
+#
+# Estas regras codificam incompatibilidades REAIS do V8 build system.
+# Se violar: yaml2gn.py GRITA e morre (exit 1).
+
+# CONFLITOS: flags que NAO podem ser true ao mesmo tempo
+conflicts:
+  - pair: [is_asan, v8_enable_memory_corruption_api]
+    severity: fatal
+    reason: >
+      ASAN instala signal handler que sequestra SIGSEGV antes do crash filter
+      do V8 sandbox (src/sandbox/testing.h). Resultado: crashes inofensivos
+      dentro da sandbox sao reportados como heap-buffer-overflow, impedindo
+      o V8 de distinguir bypass real de crash filtrado.
+      BUILD.gn tem assert bloqueando esta combinacao.
+
+  - pair: [is_tsan, v8_enable_memory_corruption_api]
+    severity: fatal
+    reason: >
+      TSAN tambem intercepta sinais. Mesma razao do ASAN.
+      Sanitizers e Memory Corruption API sao mutuamente exclusivos.
+
+  - pair: [is_ubsan, v8_enable_memory_corruption_api]
+    severity: fatal
+    reason: >
+      UBSAN intercepta undefined behavior antes do crash filter.
+      Sanitizers e Memory Corruption API sao mutuamente exclusivos.
+
+  - pair: [is_asan, is_tsan]
+    severity: fatal
+    reason: >
+      ASAN e TSAN usam shadow memory incompativel.
+      Nao podem coexistir no mesmo binario.
+
+  - pair: [is_asan, is_ubsan_vptr]
+    severity: fatal
+    reason: >
+      ASAN e UBSAN vptr usam instrumentacao incompativel.
+
+  - pair: [v8_enable_verify_heap, is_component_build]
+    severity: warning
+    reason: >
+      verify_heap com component build pode ter false positives em
+      shared library boundaries. Preferir static build para verify_heap.
+
+# IMPLICACOES: se A entao B deve ser C
+implications:
+  - if: {v8_enable_memory_corruption_api: true}
+    then: {v8_enable_sandbox: true}
+    reason: >
+      Memory Corruption API opera DENTRO da sandbox.
+      Sem sandbox habilitada, a API nao faz sentido.
+
+  - if: {is_asan: true}
+    then: {v8_enable_memory_corruption_api: false}
+    reason: >
+      ASAN requer Memory Corruption API desabilitada (ver conflito acima).
+
+  - if: {is_tsan: true}
+    then: {v8_enable_memory_corruption_api: false}
+    reason: >
+      TSAN requer Memory Corruption API desabilitada.
+
+  - if: {is_tsan: true}
+    then: {is_asan: false}
+    reason: >
+      TSAN e ASAN sao mutuamente exclusivos.
+
+  - if: {v8_enable_verify_heap: true}
+    then: {dcheck_always_on: true}
+    reason: >
+      verify_heap usa DCHECKs internamente. Sem dcheck_always_on,
+      as verificacoes de heap sao silenciosamente puladas.
+
+  - if: {v8_no_inline: true}
+    then: {is_debug: true}
+    reason: >
+      v8_no_inline so faz sentido em debug builds (previne inlining
+      para facilitar step-through no debugger).
+
+  - if: {v8_monolithic: true}
+    then: {is_component_build: false}
+    reason: >
+      v8_monolithic gera um unico .a/.lib. Incompativel com component build
+      que gera multiplos .so/.dylib.
+
+  - if: {is_debug: false, dcheck_always_on: false}
+    then: {v8_enable_verify_heap: false}
+    reason: >
+      Release sem dcheck nao suporta verify_heap (DCHECKs removidos).
+
+# REQUERIMENTOS: se flag=true, entao deps devem ser true
+requirements:
+  - flag: is_ubsan_vptr
+    requires: [is_ubsan]
+    reason: >
+      is_ubsan_vptr eh um modo de UBSAN. Requer is_ubsan=true como base.
+
+  - flag: v8_enable_verify_heap
+    requires: [dcheck_always_on]
+    reason: >
+      verify_heap depende de DCHECKs habilitados para funcionar.
+
+  - flag: v8_monolithic
+    requires: []
+    conflicts_with: [is_component_build]
+    reason: >
+      v8_monolithic eh incompativel com component build, nao requer deps adicionais.
+
+# CHROMIUM BUILD SYSTEM ARGS
+# Estes args NAO estao no V8 BUILD.gn — vem do build system do Chromium.
+# Listados aqui para validacao de tipo (evitar erros silenciosos).
+chromium_args:
+  is_debug:
+    type: bool
+    description: "Enable debug mode (from //build/config/BUILDCONFIG.gn)"
+  is_asan:
+    type: bool
+    description: "Enable Address Sanitizer"
+  is_tsan:
+    type: bool
+    description: "Enable Thread Sanitizer"
+  is_ubsan:
+    type: bool
+    description: "Enable Undefined Behavior Sanitizer"
+  is_ubsan_vptr:
+    type: bool
+    description: "Enable UBSAN vptr checks"
+  is_component_build:
+    type: bool
+    description: "Build as shared libraries (faster link, slower startup)"
+  target_cpu:
+    type: string
+    description: "Target CPU architecture"
+    values: ["x64", "x86", "arm", "arm64", "mips64el", "riscv64"]
+  symbol_level:
+    type: int
+    description: "Debug symbol level (0=none, 1=file+line, 2=full)"
+    range: [0, 1, 2]
+  dcheck_always_on:
+    type: bool
+    description: "Enable DCHECK assertions even in release builds"
+  cc_wrapper:
+    type: string
+    description: "Compiler wrapper (e.g. ccache)"
+  treat_warnings_as_errors:
+    type: bool
+    description: "Treat compiler warnings as errors"
+  strip_debug_info:
+    type: bool
+    description: "Strip debug info from output binary"
+  concurrent_links:
+    type: int
+    description: "Max concurrent link jobs (prevent OOM)"
+  clang_use_chrome_plugins:
+    type: bool
+    description: "Use Chrome-specific clang plugins (lint, etc)"
