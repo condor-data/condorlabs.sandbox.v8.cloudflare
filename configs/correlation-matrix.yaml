@@ -90,6 +90,40 @@ implications:
     reason: >
       Release sem dcheck nao suporta verify_heap (DCHECKs removidos).
 
+# RUNTIME FLAG CONFLICTS (nao validados automaticamente — referencia para humanos)
+# Estas regras documentam incompatibilidades entre runtime flags (--flag).
+# yaml2gn.py valida GN args; estas regras sao para revisao manual.
+runtime_conflicts:
+  - pair: [--sandbox-testing, --sandbox-fuzzing]
+    severity: fatal
+    reason: >
+      Mutuamente exclusivos. --sandbox-testing sai com exit 0 em crash filtrado
+      (para desenvolvimento interativo). --sandbox-fuzzing sai com exit non-zero
+      (para fuzzers detectarem crashes). Usar ambos eh comportamento indefinido.
+
+  - pair: [--hole-fuzzing, sanitizer-configs]
+    severity: warning
+    reason: >
+      --hole-fuzzing desabilita DCHECKs e transforma CHECK failures em exits
+      silenciosos. Em configs sanitizer, voce QUER DCHECKs ativos porque
+      sanitizers capturam o efeito downstream. hole-fuzzing reduz eficacia
+      do sanitizer. Aceitavel em ubsan (onde queremos ver o UB completo),
+      NAO recomendado em asan/tsan.
+
+  - pair: [--stress-concurrent-allocation, --single-threaded-gc=true]
+    severity: fatal
+    reason: >
+      stress-concurrent-allocation inicia threads de background alocando
+      memoria. Com single-threaded-gc=true, essas alocacoes nao tem
+      barreira de GC adequada. Combinacao invalida.
+
+# IMPLICACAO RUNTIME: se memory_corruption_api compilado, precisa de runtime flag
+runtime_implications:
+  - note: >
+      Se v8_enable_memory_corruption_api=true (GN), entao runtime_flags
+      DEVE conter --sandbox-testing OU --sandbox-fuzzing. Sem isso,
+      o crash filter nao ativa e a API Memory Corruption nao eh exposta.
+
 # REQUERIMENTOS: se flag=true, entao deps devem ser true
 requirements:
   - flag: is_ubsan_vptr

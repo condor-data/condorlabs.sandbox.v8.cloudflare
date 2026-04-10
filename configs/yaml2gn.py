@@ -212,11 +212,11 @@ class CorrelationValidator:
 
         return errors
 
-    def validate_runtime_flags(self, config_name: str, runtime_flags: list[str]) -> list[str]:
-        """Valida runtime flags contra catalogo de d8 --help."""
+    def validate_runtime_flags(self, config_name: str, family: str,
+                               runtime_flags: list[str], gn_args: dict) -> list[str]:
+        """Valida runtime flags contra catalogo de d8 --help + regras de conflito."""
         errors = []
-        if not self.runtime_index:
-            return errors  # Catalogo nao disponivel
+        flag_names = set()
 
         for flag in runtime_flags:
             # Parse: --flag-name ou --flag-name=value
@@ -225,8 +225,9 @@ class CorrelationValidator:
                 name = clean.split("=")[0]
             else:
                 name = clean
+            flag_names.add(name)
 
-            if name not in self.runtime_index:
+            if self.runtime_index and name not in self.runtime_index:
                 # Tentar com prefixo "no-" removido
                 if name.startswith("no-") and name[3:] in self.runtime_index:
                     continue  # --no-flag eh valido se --flag existe
@@ -234,6 +235,24 @@ class CorrelationValidator:
                     f"WARNING [{config_name}]: runtime flag --{name} "
                     f"nao encontrada no catalogo de d8 --help ({len(self.runtime_index)} flags)",
                     file=sys.stderr
+                )
+
+        # Runtime conflict: --sandbox-testing vs --sandbox-fuzzing
+        if "sandbox-testing" in flag_names and "sandbox-fuzzing" in flag_names:
+            errors.append(
+                f"RUNTIME_CONFLITO [{config_name}]: --sandbox-testing + --sandbox-fuzzing "
+                f"sao mutuamente exclusivos. testing=exit(0) em crash filtrado, "
+                f"fuzzing=exit(non-zero)."
+            )
+
+        # Runtime implication: sandbox family DEVE ter --sandbox-testing OU --sandbox-fuzzing
+        if family == "sandbox":
+            if "sandbox-testing" not in flag_names and "sandbox-fuzzing" not in flag_names:
+                errors.append(
+                    f"RUNTIME_IMPLICACAO [{config_name}]: family=sandbox com "
+                    f"v8_enable_memory_corruption_api=true mas runtime_flags nao "
+                    f"tem --sandbox-testing nem --sandbox-fuzzing. Sem isso, "
+                    f"o crash filter nao ativa e a API nao eh exposta."
                 )
 
         return errors
@@ -289,7 +308,7 @@ def generate_args_gn(yaml_path: str, config_name: str, validate_only: bool = Fal
     errors = validator.validate_gn_args(config_name, family, merged)
 
     # Validar runtime flags
-    rt_errors = validator.validate_runtime_flags(config_name, runtime_flags)
+    rt_errors = validator.validate_runtime_flags(config_name, family, runtime_flags, merged)
     errors.extend(rt_errors)
 
     if errors:
@@ -432,7 +451,7 @@ def cmd_validate_all(yaml_path: str):
         merged = {**base, **gn_args}
 
         errors = validator.validate_gn_args(name, family, merged)
-        errors.extend(validator.validate_runtime_flags(name, runtime_flags))
+        errors.extend(validator.validate_runtime_flags(name, family, runtime_flags, merged))
 
         if errors:
             print(f"  X {name:20s} ({family}) -- {len(errors)} erros:")

@@ -6,8 +6,7 @@ base:
   v8_enable_sandbox: true
   target_cpu: x64
   treat_warnings_as_errors: false
-  cc_wrapper: env CCACHE_SLOPPINESS=time_macros,include_file_mtime CCACHE_COMPRESS=1
-    CCACHE_NOHASHDIR=1 ccache
+  cc_wrapper: env CCACHE_SLOPPINESS=time_macros,include_file_mtime CCACHE_COMPRESS=1 CCACHE_NOHASHDIR=1 ccache
   clang_use_chrome_plugins: false
   v8_enable_i18n_support: false
   concurrent_links: 1
@@ -29,7 +28,9 @@ configs:
     - --sandbox-testing
     - --allow-natives-syntax
     - --expose-gc
-    - --expose-memory-corruption-api
+    - --stress-ic
+    - --hole-fuzzing
+    - --deopt-every-n-times=100
     - --verify-bytecode-full
     last_build_status: OK
     last_build_version: 14.7.173.16
@@ -52,15 +53,26 @@ configs:
     - --allow-natives-syntax
     - --expose-gc
     - --hole-fuzzing
-    - --stress-wasm-stack-switching
-    - --stress-wasm-memory-moving
-    - --stress-scavenge
-    - --stress-compaction
     - --jit-fuzzing
+    - --verify-bytecode-full
+    - --stress-ic
     - --stress-maglev
+    - --stress-concurrent-inlining
+    - --deopt-every-n-times=100
+    - --stress-inline
+    - --stress-lazy-compilation=5
+    - --stress-background-compile
+    - --stress-compaction-random
+    - --stress-incremental-marking
+    - --stress-marking=50
+    - --stress-scavenge
+    - --stress-concurrent-allocation
+    - --stress-flush-code
     - --stress-gc-during-compilation
     - --gc-interval=100
-    - --verify-bytecode-full
+    - --fuzzer-gc-analysis
+    - --stress-wasm-stack-switching
+    - --stress-wasm-memory-moving
     last_build_status: null
     last_build_version: null
     last_build_date: null
@@ -85,6 +97,10 @@ configs:
     - --sandbox-testing
     - --allow-natives-syntax
     - --expose-gc
+    - --verify-heap
+    - --verify-bytecode-full
+    - --verify-write-barriers
+    - --verify-simplified-lowering
     - --trace-turbo
     - --print-opt-code
     - --print-bytecode
@@ -93,8 +109,8 @@ configs:
     - --trace-deopt-verbose
     - --print-ast
     - --trace-wasm-stack-switching
-    - --verify-heap
-    - --verify-bytecode-full
+    - --trace-elements-transitions
+    - --trace-migration
     last_build_status: null
     last_build_version: null
     last_build_date: null
@@ -113,6 +129,8 @@ configs:
       v8_monolithic: true
     runtime_flags:
     - --sandbox-fuzzing
+    - --allow-natives-syntax
+    - --expose-gc
     last_build_status: null
     last_build_version: null
     last_build_date: null
@@ -132,16 +150,25 @@ configs:
     runtime_flags:
     - --allow-natives-syntax
     - --expose-gc
-    - --stress-compaction
+    - --verify-heap
+    - --verify-write-barriers
+    - --verify-bytecode-full
+    - --stress-ic
+    - --stress-maglev
+    - --deopt-every-n-times=100
+    - --stress-compaction-random
+    - --stress-incremental-marking
+    - --stress-marking=50
     - --stress-scavenge
+    - --stress-concurrent-allocation
+    - --stress-flush-code
     - --gc-interval=50
     last_build_status: null
     last_build_version: null
     last_build_date: null
     d8_binary_size: null
   tsan:
-    description: Thread Sanitizer — data races (DefaultJobState UAF, MemoryChunk flag
-      race)
+    description: Thread Sanitizer — data races (DefaultJobState UAF, MemoryChunk flag race)
     family: sanitizer
     gn_args:
       is_debug: false
@@ -156,16 +183,26 @@ configs:
     runtime_flags:
     - --allow-natives-syntax
     - --expose-gc
-    - --stress-concurrent-inlining
-    - --stress-gc-during-compilation
     - --single-threaded-gc=false
+    - --concurrent-marking
+    - --stress-concurrent-allocation
+    - --stress-concurrent-inlining
+    - --stress-concurrent-inlining-attach-code
+    - --stress-background-compile
+    - --stress-gc-during-compilation
+    - --stress-ic
+    - --stress-maglev
+    - --jit-fuzzing
+    - --stress-compaction
+    - --stress-incremental-marking
+    - --stress-scavenge
+    - --gc-interval=100
     last_build_status: null
     last_build_version: null
     last_build_date: null
     d8_binary_size: null
   ubsan:
-    description: Undefined Behavior Sanitizer — integer overflow, type confusion,
-      null deref
+    description: Undefined Behavior Sanitizer — integer overflow, type confusion, null deref
     family: sanitizer
     gn_args:
       is_debug: false
@@ -181,6 +218,18 @@ configs:
     runtime_flags:
     - --allow-natives-syntax
     - --expose-gc
+    - --verify-bytecode-full
+    - --stress-ic
+    - --stress-maglev
+    - --jit-fuzzing
+    - --stress-inline
+    - --stress-concurrent-inlining
+    - --deopt-every-n-times=100
+    - --hole-fuzzing
+    - --stress-compaction
+    - --stress-scavenge
+    - --stress-gc-during-compilation
+    - --gc-interval=100
     last_build_status: null
     last_build_version: null
     last_build_date: null
@@ -233,21 +282,27 @@ configs:
     - --sandbox-fuzzing
     - --allow-natives-syntax
     - --expose-gc
+    - --hole-fuzzing
+    - --jit-fuzzing
+    - --verify-bytecode-full
     - --experimental-wasm-wasmfx
     - --experimental-wasm-growable-stacks
+    - --wasm-staging
+    - --wasm-deopt
+    - --wasm-lazy-validation
     - --stress-wasm-stack-switching
     - --stress-wasm-memory-moving
     - --stress-wasm-code-gc
-    - --wasm-deopt
-    - --jit-fuzzing
-    - --hole-fuzzing
+    - --stress-compaction
+    - --stress-incremental-marking
+    - --stress-scavenge
+    - --gc-interval=100
     last_build_status: null
     last_build_version: null
     last_build_date: null
     d8_binary_size: null
   jit-stress:
-    description: JIT stress testing — Maglev type confusion, Turbolev, concurrent
-      inlining
+    description: JIT stress testing — Maglev type confusion, Turbolev, concurrent inlining
     family: sandbox
     gn_args:
       is_debug: false
@@ -261,13 +316,26 @@ configs:
     - --sandbox-fuzzing
     - --allow-natives-syntax
     - --expose-gc
+    - --hole-fuzzing
+    - --verify-bytecode-full
+    - --stress-ic
     - --stress-maglev
+    - --maglev-future
+    - --maglev-assert-types
+    - --turbolev
+    - --turbolev-future
+    - --verify-simplified-lowering
     - --jit-fuzzing
     - --stress-concurrent-inlining
     - --stress-concurrent-inlining-attach-code
-    - --turbolev
-    - --hole-fuzzing
+    - --stress-inline
+    - --deopt-every-n-times=100
+    - --stress-lazy-compilation=5
+    - --stress-background-compile
     - --stress-gc-during-compilation
+    - --stress-flush-code
+    - --stress-compaction
+    - --gc-interval=100
     last_build_status: null
     last_build_version: null
     last_build_date: null
