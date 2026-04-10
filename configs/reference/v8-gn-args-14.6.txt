@@ -1,0 +1,173 @@
+# V8 GN Build Args Reference (from source)
+# Extraido: 2026-04-10T01:20:14Z
+# Fonte: /Volumes/Forense/nfs-agents-condorlabs/bazel-cache/_bazel_tars/cache/repos/v1/contents/500e930aaad1d9454e8eb046cff8bfe9b2b3078ff801afbb37a4913a851e2006/7b3d8dc8-0771-433c-b077-13324be72416/BUILD.gn + /Volumes/Forense/nfs-agents-condorlabs/bazel-cache/_bazel_tars/cache/repos/v1/contents/500e930aaad1d9454e8eb046cff8bfe9b2b3078ff801afbb37a4913a851e2006/7b3d8dc8-0771-433c-b077-13324be72416/gni/v8.gni
+#
+
+# === BUILD.gn ===
+((v8_target_is_simulator && target_os ! = "mac") ||
+(v8_current_cpu = = "ppc64" && (is_linux || is_chromeos)))
+arm_control_flow_integrity ! = "none")
+cppgc_allow_allocations_in_prefinalizers = false
+cppgc_enable_caged_heap = 
+cppgc_enable_verify_heap = ""
+is_debug && (((v8_current_cpu = = "x86" || v8_current_cpu == "x64") &&
+target_os = = "android" || target_os == "chromeos" ||
+target_os = = "fuchsia"
+use_cppgc_clang_plugin = true
+v8_allocation_site_tracking = true
+v8_always_enable_maglev_graph_labeller = ""
+v8_android_log_stdout = false
+v8_annotate_torque_ir = false
+v8_array_buffer_internal_field_count = 0
+v8_array_buffer_view_internal_field_count = 0
+v8_builtins_profiling_log_file = "default"
+v8_can_use_fpu_instructions = true
+v8_check_header_includes = false
+v8_code_comments = ""
+v8_control_flow_integrity = v8_current_cpu == "arm64" &&
+v8_current_cpu = = "x64" || v8_current_cpu == "arm64" ||
+v8_current_cpu = = "loong64" || v8_current_cpu == "riscv64"
+v8_current_cpu = = "x64" || v8_current_cpu == "arm64"
+v8_custom_deps = ""
+v8_dcheck_always_on = dcheck_always_on
+v8_depend_on_icu_data_file = icu_use_data_file
+v8_deprecation_warnings = true
+v8_dict_property_const_tracking = false
+v8_disable_write_barriers = false
+v8_dumpling = false
+v8_embed_script = ""
+v8_embedder_string = ""
+v8_enable_allocation_folding = true
+v8_enable_apx_f = false
+v8_enable_atomic_object_field_writes = ""
+v8_enable_black_allocated_pages = ""
+v8_enable_builtin_jump_table_switch = 
+v8_enable_builtins_frame_elision = true
+v8_enable_builtins_gearbox = false
+v8_enable_builtins_profiling = false
+v8_enable_builtins_profiling_verbose = false
+v8_enable_builtins_reordering = true
+v8_enable_concurrent_marking = true
+v8_enable_concurrent_mksnapshot = true
+v8_enable_continuation_preserved_embedder_data = true
+v8_enable_debug_code = ""
+v8_enable_disassembler = ""
+v8_enable_experimental_tq_to_tsa = false
+v8_enable_experimental_tsa_builtins = false
+v8_enable_extensible_ro_snapshot = true
+v8_enable_external_code_space = ""
+v8_enable_fast_mksnapshot = false
+v8_enable_fast_torque = ""
+v8_enable_future = false
+v8_enable_gdbjit = 
+v8_enable_global_handle_zapping = ""
+v8_enable_handle_zapping = is_asan || is_debug
+v8_enable_heap_snapshot_verify = ""
+v8_enable_hugepage = false
+v8_enable_ignition_dispatch_counting = false
+v8_enable_javascript_promise_hooks = false
+v8_enable_lazy_source_positions = true
+v8_enable_local_handle_zapping = ""
+v8_enable_maglev_graph_printer = !build_with_chromium
+v8_enable_map_packing = false
+v8_enable_memory_accounting_checks = ""
+v8_enable_memory_corruption_api = false
+v8_enable_object_print = ""
+v8_enable_partition_alloc = ""
+v8_enable_pointer_compression_8gb = ""
+v8_enable_precise_zone_stats = false
+v8_enable_private_mapping_fork_optimization = false
+v8_enable_regexp_diagnostics = !build_with_chromium
+v8_enable_regexp_interpreter_threaded_dispatch = true
+v8_enable_sandbox = ""
+v8_enable_sandbox_hardware_support = false
+v8_enable_short_builtin_calls = ""
+v8_enable_single_generation = ""
+v8_enable_slow_dchecks = false
+v8_enable_slow_tracing = is_debug
+v8_enable_snapshot_code_comments = false
+v8_enable_snapshot_compression = 
+v8_enable_snapshot_native_code_counters = ""
+v8_enable_sparkplug = ""
+v8_enable_static_roots = ""
+v8_enable_static_roots_generation = false
+v8_enable_sticky_mark_bits = false
+v8_enable_swiss_name_dictionary = false
+v8_enable_system_instrumentation = (is_win || is_mac) && !v8_use_perfetto
+v8_enable_test_features = ""
+v8_enable_trace_baseline_exec = false
+v8_enable_trace_feedback_updates = false
+v8_enable_trace_ignition = false
+v8_enable_trace_maps = ""
+v8_enable_trace_unoptimized = ""
+v8_enable_unconditional_write_barriers = false
+v8_enable_undefined_double = true
+v8_enable_v8_checks = ""
+v8_enable_verify_csa = false
+v8_enable_verify_heap = ""
+v8_enable_verify_predictable = false
+v8_enable_verify_write_barriers = ""
+v8_enable_vtunejit = false
+v8_enable_vtunetracemark = false
+v8_etw_guid = ""
+v8_function_arguments_caller_are_own_props = false
+v8_generate_external_defines_header = false
+v8_imminent_deprecation_warnings = true
+v8_jitless = v8_enable_lite_mode
+v8_log_builtins_block_count_input = ""
+v8_lower_limits_mode = false
+v8_monolithic_for_shared_library = false
+v8_no_inline = false
+v8_os_page_size = "0"
+v8_postmortem_support = false
+v8_promise_internal_field_count = 0
+v8_riscv_enable_deprecated_riscv32 = false
+v8_scriptormodule_legacy_lifetime = false
+v8_shortcut_strings_in_minor_ms = false
+v8_typed_array_max_size_in_heap = 64
+v8_use_default_hasher_secret = true
+v8_use_mips_abi_hardfloat = true
+v8_use_siphash = false
+v8_use_zlib = true
+v8_value_deserializer_hard_fail = false
+v8_verify_builtins_compatibility = false
+v8_verify_deterministic_mksnapshot = false
+v8_verify_torque_generation_invariance = false
+v8_win64_unwinding_info = true
+
+# Total: 130 args em $gn_file
+
+# === v8.gni ===
+!(is_win || is_linux || is_mac) || v8_current_cpu ! = "x64" || !is_clang ||
+v8_correctness_fuzzer = false
+v8_drumbrake_bounds_checks = 
+v8_enable_backtrace = ""
+v8_enable_builtins_optimization = ""
+v8_enable_debugging_features = is_debug
+v8_enable_drumbrake = false
+v8_enable_drumbrake_tracing = false
+v8_enable_i18n_support = true
+v8_enable_lite_mode = false
+v8_enable_lite_mode = !use_blink
+v8_enable_maglev = ""
+v8_enable_temporal_support = !(defined(build_with_node) && build_with_node)
+v8_enable_turbofan = ""
+v8_enable_verification_features = v8_enable_debugging_features
+v8_enable_wasm_gdb_remote_debugging = false
+v8_enable_wasm_simd256_revec = false
+v8_enable_webassembly = ""
+v8_expose_public_symbols = ""
+v8_expose_symbols = false
+v8_gcmole = false
+v8_has_valgrind = false
+v8_monolithic = false
+v8_multi_arch_build = false
+v8_optimized_debug = true
+v8_static_library = false
+v8_symbol_level = symbol_level
+v8_use_external_startup_data = ""
+v8_use_perfetto = false
+v8_use_perfetto_json_export = ""
+v8_use_perfetto_sdk = false
+
+# Total: 31 args em $gn_file

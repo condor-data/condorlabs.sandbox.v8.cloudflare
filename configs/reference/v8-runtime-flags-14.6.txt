@@ -1,0 +1,1044 @@
+# V8 Runtime Flags Reference
+# Fonte: /Volumes/Forense/nfs-agents-condorlabs/bazel-cache/_bazel_tars/cache/repos/v1/contents/500e930aaad1d9454e8eb046cff8bfe9b2b3078ff801afbb37a4913a851e2006/7b3d8dc8-0771-433c-b077-13324be72416/src/flags/flag-definitions.h
+# Extraido: 2026-04-10T01:19:01Z
+# Linhas no arquivo:     4223
+#
+# Total flags:
+#   DEFINE_BOOL:   695
+#   DEFINE_INT:    117
+#   DEFINE_UINT:   21
+#   DEFINE_FLOAT:  13
+#   DEFINE_STRING: 49
+#   DEFINE_BOOL_READONLY: 78
+#   DEFINE_DEBUG_BOOL: 14
+#   DEFINE_EXPERIMENTAL_FEATURE: 38
+#   TOTAL: 1025
+
+=== ALL FLAGS (name, type, default, description) ===
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(
+DEFINE_BOOL(better_code_range_allocation,
+DEFINE_BOOL_READONLY(
+DEFINE_BOOL_READONLY(
+DEFINE_BOOL_READONLY(
+DEFINE_BOOL_READONLY(
+DEFINE_BOOL_READONLY(
+DEFINE_BOOL_READONLY(
+DEFINE_BOOL_READONLY(
+DEFINE_BOOL_READONLY(
+DEFINE_BOOL_READONLY(
+DEFINE_BOOL_READONLY(
+DEFINE_BOOL_READONLY(
+DEFINE_BOOL_READONLY(
+DEFINE_BOOL_READONLY(
+DEFINE_BOOL_READONLY(
+DEFINE_BOOL_READONLY(
+DEFINE_BOOL_READONLY(
+DEFINE_BOOL_READONLY(dict_property_const_tracking,
+DEFINE_BOOL_READONLY(enable_unconditional_write_barriers,
+DEFINE_BOOL_READONLY(local_off_stack_check,
+DEFINE_DEBUG_BOOL(
+DEFINE_DEBUG_BOOL(
+DEFINE_FLOAT(
+DEFINE_FLOAT(
+DEFINE_FLOAT(
+DEFINE_FLOAT(
+DEFINE_INT(
+DEFINE_INT(
+DEFINE_INT(
+DEFINE_INT(
+DEFINE_INT(
+DEFINE_INT(
+DEFINE_INT(
+DEFINE_STRING(
+DEFINE_STRING(
+DEFINE_STRING(
+DEFINE_STRING(
+DEFINE_STRING(
+DEFINE_STRING(
+DEFINE_STRING(
+DEFINE_UINT(
+DEFINE_UINT(
+DEFINE_UINT(
+DEFINE_UINT(
+DEFINE_UINT(minor_ms_min_new_space_capacity_for_concurrent_marking_mb,
+BOOL abort_on_bad_builtin_profile_data  false 
+BOOL abort_on_contradictory_flags  false 
+BOOL abort_on_far_code_range  false 
+BOOL abort_on_uncaught_exception  false 
+BOOL_READONLY additive_safe_int_feedback  false 
+BOOL additive_safe_int_feedback  true 
+BOOL adjust_os_scheduling_parameters  true 
+BOOL allocation_buffer_parking  true  "allocation buffer parking")
+BOOL allocation_site_pretenuring  true 
+BOOL_READONLY allocation_site_tracking  V8_ALLOCATION_SITE_TRACKING_BOOL 
+BOOL allow_natives_for_differential_fuzzing  false 
+BOOL allow_natives_syntax  false  "allow natives syntax")
+BOOL allow_overwriting_for_next_flag  false 
+BOOL allow_unsafe_function_constructor  false 
+BOOL always_osr  false  "always try to OSR functions")
+BOOL always_osr_from_maglev  false 
+BOOL always_sparkplug  false  "directly tier up to Sparkplug code")
+BOOL_READONLY always_use_string_forwarding_table  false 
+BOOL analyze_environment_liveness  true 
+STRING arm_arch  ARM_ARCH_DEFAULT 
+BOOL asm_wasm_lazy_compilation  true 
+BOOL assert_types  false 
+BOOL async_stack_traces  true 
+BOOL baseline_batch_compilation  false  "batch compile Sparkplug code")
+BOOL baseline_batch_compilation  true  "batch compile Sparkplug code")
+INT baseline_batch_compilation_threshold  4 * KB 
+BOOL builtin_subclassing  true 
+BOOL builtins_in_stack_traces  false 
+FLOAT bytecode_compiler_ablation_amount  0.8 
+INT bytecode_old_age  6  "number of gcs before we flush code")
+INT bytecode_old_time  30  "number of seconds before we flush code")
+BOOL cache_property_key_string_adds  true 
+BOOL cache_prototype_transitions  true  "cache prototype transitions")
+BOOL cet_compatible  V8_CET_SHADOW_STACK_BOOL 
+BOOL check_handle_count  false 
+BOOL check_icache  false 
+BOOL clear_exceptions_on_js_entry  false 
+BOOL clear_free_memory  false  "initialize free memory with 0")
+BOOL code_comments  false 
+BOOL_READONLY code_comments  false  "")
+BOOL code_stats  false  "report code statistics after GC")
+BOOL compact  true 
+BOOL compact_code_space  true 
+BOOL compact_on_every_full_gc  false 
+BOOL compact_with_stack  true 
+INT compaction_max_evacuated_bytes_mb  4 
+INT compaction_max_evacuated_bytes_mb_for_optimize_memory  6 
+INT compaction_max_evacuated_bytes_mb_for_reduce_memory  12 
+INT compaction_target_fragmentation_percent_for_optimize_memory  20 
+INT compaction_target_fragmentation_percent_for_reduce_memory  20 
+BOOL compilation_cache  true  "enable compilation cache")
+BOOL concurrent_array_buffer_sweeping  true 
+BOOL concurrent_builtin_generation  false 
+BOOL concurrent_cache_deserialization  true 
+BOOL concurrent_maglev_high_priority_threads  false 
+BOOL concurrent_marking  false  "use concurrent marking")
+BOOL concurrent_marking  true  "use concurrent marking")
+BOOL concurrent_marking_high_priority_threads  false 
+BOOL concurrent_minor_ms_marking  true 
+BOOL concurrent_osr  true  "enable concurrent OSR")
+BOOL concurrent_recompilation  true 
+INT concurrent_recompilation_delay  0 
+BOOL concurrent_recompilation_front_running  true 
+INT concurrent_recompilation_queue_length  8 
+BOOL concurrent_sparkplug  ENABLE_SPARKPLUG_BY_DEFAULT 
+BOOL_READONLY concurrent_sparkplug  false 
+BOOL_READONLY concurrent_sparkplug  false 
+BOOL concurrent_sparkplug_high_priority_threads  false 
+BOOL concurrent_sweeping  true  "use concurrent sweeping")
+BOOL concurrent_turbo_tracing  false 
+BOOL_READONLY conservative_stack_scanning  true 
+BOOL correctness_fuzzer_suppressions  false 
+INT cppgc_random_gc_interval  0 
+BOOL cppheap_concurrent_marking  false 
+BOOL cppheap_incremental_marking  false 
+INT cpu_profiler_sampling_interval  1000 
+STRING csa_trap_on_node  nullptr 
+BOOL debug_code  DEBUG_BOOL 
+BOOL_READONLY debug_code  false  "")
+BOOL debug_sim  false  "Enable debugging the simulator")
+BOOL default_to_experimental_regexp_engine  false 
+INT deopt_every_n_times  0 
+BOOL detailed_line_info  false 
+BOOL detect_ineffective_gcs_near_heap_limit  true 
+BOOL_READONLY direct_handle  V8_ENABLE_DIRECT_HANDLE_BOOL 
+BOOL disable_abortjs  false  "disables AbortJS runtime function")
+BOOL_READONLY disable_write_barriers  V8_DISABLE_WRITE_BARRIERS_BOOL 
+BOOL disallow_code_generation_from_strings  false 
+BOOL disallow_unsafe_flags  false 
+UINT double_string_cache_size  4096  "Full size of DoubleStringCache")
+BOOL drumbrake_compact_bytecode  false 
+BOOL drumbrake_fuzzer_timeout  false 
+BOOL drumbrake_fuzzing_mode  false 
+BOOL drumbrake_register_optimization  true 
+BOOL drumbrake_super_instructions  true 
+INT dump_allocations_digest_at_alloc  -1 
+STRING dump_out_filename  "/tmp/output_dump.txt" 
+STRING dump_positions_filename  "/tmp/dump_positions.txt" 
+DEBUG_BOOL dump_wasm_module  false  "dump wasm module bytes")
+STRING dump_wasm_module_path  nullptr 
+INT dumpling_depth  3  "depth used in dumpling")
+INT efficiency_mode_delay_turbofan_multiply  3 
+BOOL efficiency_mode_disable_turbofan  false 
+STRING embedded_src  nullptr 
+BOOL empty_context_extension_dep  true 
+BOOL enable_allocation_failures_optimize_memory  true 
+BOOL enable_allocation_failures_optimize_memory_ignoring_priority  false 
+BOOL_READONLY enable_allocation_folding  V8_ALLOCATION_FOLDING_BOOL 
+BOOL enable_apx_f  false  "enable use of APX_F instruction if available")
+BOOL enable_avx  true  "enable use of AVX instructions if available")
+BOOL enable_avx2  true  "enable use of AVX2 instructions if available")
+BOOL enable_avx_vnni  true 
+BOOL enable_avx_vnni_int8  true 
+BOOL enable_bmi1  true  "enable use of BMI1 instructions if available")
+BOOL enable_bmi2  true  "enable use of BMI2 instructions if available")
+BOOL enable_bytecode_compiler_ablation  false 
+BOOL enable_etw_by_custom_filter_only  true 
+BOOL enable_etw_stack_walking  false 
+BOOL_READONLY enable_etw_stack_walking  false 
+BOOL enable_f16c  true  "enable use of F16C instructions if available")
+BOOL enable_fma3  true  "enable use of FMA3 instructions if available")
+BOOL enable_lazy_source_positions  V8_LAZY_SOURCE_POSITIONS_BOOL 
+BOOL enable_lzcnt  true  "enable use of LZCNT instruction if available")
+BOOL enable_parser_ablation  false  "Enable parser ablation")
+BOOL enable_popcnt  true 
+BOOL enable_preparser_ablation  false  "Enable preparser ablation")
+BOOL enable_regexp_unaligned_accesses  true 
+BOOL enable_sahf  true 
+BOOL enable_sharedarraybuffer_per_context  false 
+BOOL_READONLY enable_slow_asserts  false 
+BOOL enable_slow_asserts  true 
+BOOL enable_source_at_csa_bind  false 
+BOOL enable_sse3  true  "enable use of SSE3 instructions if available")
+BOOL enable_sse4_1  true 
+BOOL enable_sse4_2  true 
+BOOL enable_ssse3  true  "enable use of SSSE3 instructions if available")
+BOOL enable_vtune_domain_support  true  "enable vtune domain support")
+BOOL enable_vtunejit  true  "enable vtune jit interface")
+INT ephemeron_fixpoint_iterations  10 
+BOOL etw_trace_debug  false 
+BOOL_READONLY etw_trace_debug  false 
+BOOL exit_on_contradictory_flags  false 
+BOOL experimental  false 
+BOOL experimental_flush_embedded_blob_icache  true 
+BOOL experimental_fuzzing  false 
+BOOL experimental_regexp_engine_capture_group_opt  false 
+BOOL experimental_report_exceptions_from_callbacks  true 
+BOOL experimental_stack_trace_frames  false 
+BOOL experimental_wasm_##feat  val  "enable " desc " for Wasm")
+BOOL expose_async_hooks  false  "expose async_hooks object")
+STRING expose_cputracemark_as  nullptr 
+BOOL expose_externalize_string  false 
+BOOL expose_gc  false  "expose gc extension")
+STRING expose_gc_as  nullptr 
+BOOL expose_ignition_statistics  false 
+BOOL expose_inspector_scripts  false 
+BOOL expose_memory_corruption_api  false 
+BOOL_READONLY expose_memory_corruption_api  false 
+BOOL expose_statistics  false  "expose statistics extension")
+BOOL expose_trigger_failure  false  "expose trigger-failure extension")
+BOOL extensible_ro_snapshot  true 
+INT external_memory_max_reasonable_size  32 
+BOOL external_reference_stats  false 
+BOOL fast_api_allow_float_in_sim  false 
+BOOL_READONLY fast_map_update  false 
+INT fast_properties_soft_limit  12 
+BOOL_READONLY fixed_array_bounds_checks  true 
+INT fixed_margin_for_input_handling  64 
+BOOL flush_baseline_code  false 
+BOOL flush_bytecode  true 
+BOOL flush_code_based_on_tab_visibility  false 
+BOOL flush_code_based_on_time  false 
+BOOL flush_liftoff_code  true 
+BOOL force_emit_interrupt_budget_checks  false 
+BOOL force_long_branches  false 
+BOOL force_memory_protection_keys  false 
+BOOL force_slow_path  false  "always take the slow path for builtins")
+BOOL freeze_flags_after_init  false 
+BOOL freeze_flags_after_init  true 
+BOOL function_context_cells  true 
+INT function_context_cells_max_size  2 
+BOOL future  FUTURE_BOOL 
+BOOL fuzzer_gc_analysis  false 
+INT fuzzer_random_seed  0 
+BOOL fuzzing_and_concurrent_recompilation  true 
+STRING gc_fake_mmap  "/tmp/__v8_gc__" 
+BOOL gc_global  false  "always perform global GCs")
+INT gc_interval  -1  "garbage collect after <n> allocations")
+INT gc_memory_reducer_start_delay_ms  30'000 
+BOOL gc_speed_uses_counters  false 
+INT gc_stats  0  "Used by tracing internally to enable gc statistics")
+BOOL gc_verbose  false  "print stuff during garbage collection")
+BOOL gdbjit  false  "enable GDBJIT interface")
+BOOL gdbjit_dump  false  "dump elf objects with debug info to disk")
+STRING gdbjit_dump_filter  "" 
+BOOL gdbjit_full  false  "enable GDBJIT interface for all code objects")
+BOOL generate_dump_positions  false  "write dump positions to a file")
+BOOL hard_abort  true  "abort by crashing")
+BOOL harmony  false  "enable all completed harmony features")
+BOOL harmony_shipping  true  "enable all shipped harmony features")
+BOOL hashes_collide  false 
+INT heap_growing_percent  0 
+BOOL heap_profiler_show_hidden_objects  false 
+BOOL heap_profiler_trace_objects  false 
+BOOL heap_profiler_use_embedder_graph  true 
+INT heap_snapshot_on_gc  -1 
+BOOL heap_snapshot_on_oom  false 
+STRING heap_snapshot_path  nullptr 
+UINT heap_snapshot_string_limit  1024 
+BOOL heap_snapshot_verify  false 
+BOOL help  false  "Print usage message, including flags, on console")
+BOOL high_end_android  false 
+UINT high_end_android_physical_memory_threshold  8 
+INT histogram_interval  600000 
+BOOL icu_british_remove_full_weekday_comma  false 
+STRING icu_datetime_compat_lang  "*" 
+BOOL icu_default_italian_number_grouping_always  false 
+BOOL icu_timezone_data  true  "get information about timezones from ICU")
+BOOL id  false                                               \
+BOOL id  false  "enable " #description) \
+BOOL id  true  "enable " #description)    \
+BOOL idle_gc_on_context_disposal  true  "idle gc on context disposal")
+BOOL ignition_elide_noneffectful_bytecodes  true 
+BOOL ignition_elide_redundant_tdz_checks  true 
+BOOL ignition_filter_expression_positions  true 
+BOOL ignition_reo  true  "use ignition register equivalence optimizer")
+BOOL ignition_share_named_property_feedback  true 
+BOOL incremental_marking  true  "use incremental marking")
+BOOL incremental_marking_for_gc_in_background  true 
+INT incremental_marking_hard_trigger  0 
+INT incremental_marking_soft_trigger  0 
+BOOL incremental_marking_task  true  "use tasks for incremental marking")
+BOOL incremental_marking_unified_schedule  false 
+BOOL ineffective_gc_includes_global  false 
+FLOAT ineffective_gc_mutator_utilization_threshold  0.4 
+BOOL ineffective_gcs_forces_last_resort  false 
+BOOL inline_date_accessors  true  "Inline Date accessors")
+BOOL inline_new  true  "use fast inline allocation")
+BOOL inspector_live_edit  false 
+BOOL intel_jcc_erratum_mitigation  true 
+BOOL_READONLY internalize_on_the_fly  true 
+BOOL interpreted_frames_native_stack  false 
+BOOL interpreter_dumping  false 
+INT invocation_count_for_early_optimization  30 
+INT invocation_count_for_feedback_allocation  8 
+INT invocation_count_for_maglev  1000 
+INT invocation_count_for_maglev  400 
+INT invocation_count_for_maglev_osr  100 
+INT invocation_count_for_maglev_with_delay  600 
+INT invocation_count_for_osr  500  "invocation count required for OSR")
+INT invocation_count_for_turbofan  3000 
+BOOL is_standalone_d8_shell  false 
+BOOL jit_fuzzing  false 
+BOOL jitless  V8_LITE_MODE_BOOL 
+BOOL_READONLY jitless  true 
+BOOL js_nonextensible_applies_to_private  false 
+BOOL js_shipping  true  "enable all shipped JavaScript features")
+BOOL js_staging  false  "enable all completed JavaScript features")
+BOOL json_stringify_fast_path  true  "Enable JSON.stringify fast-path")
+BOOL large_page_pool  true  "Add large pages to the page pool")
+BOOL late_heap_limit_check  true 
+BOOL lazy  true  "use lazy compilation")
+UINT lazy_compile_dispatcher_max_threads  0 
+BOOL lazy_eval  true  "use lazy compilation during eval")
+BOOL lazy_feedback_allocation  true  "Allocate feedback vectors lazily")
+BOOL lazy_new_space_shrinking  false 
+BOOL lazy_streaming  true 
+BOOL liftoff  true 
+BOOL liftoff_only  false 
+BOOL lite_mode  V8_LITE_MODE_BOOL 
+BOOL ll_prof  false  "Enable low-level linux profiler.")
+BOOL load_dump_positions  false  "load dump positions from a file")
+BOOL log  false 
+BOOL log_all  false  "Log all events to the log file.")
+BOOL log_code  false 
+BOOL log_code_disassemble  false 
+BOOL log_colour  ENABLE_LOG_COLOUR 
+BOOL log_deopt  false  "log deoptimization")
+BOOL log_feedback_vector  false  "Log FeedbackVectors on first creation")
+BOOL log_function_events  false 
+BOOL log_ic  false 
+BOOL log_internal_timer_events  false  "See --log-timer-events")
+BOOL log_maps  false  "Log map creation")
+BOOL log_maps_details  true  "Also log map details")
+BOOL log_or_trace_osr  false 
+BOOL log_source_code  false  "Log source code.")
+BOOL log_source_position  false  "Log detailed source information.")
+BOOL log_timer_events  false 
+STRING logfile  "v8.log" 
+BOOL logfile_per_isolate  true  "Separate log files for each isolate.")
+BOOL_READONLY maglev  false  "enable the maglev optimizing compiler")
+BOOL maglev  true  "enable the maglev optimizing compiler")
+INT maglev_allocation_folding  2  "maglev allocation folding level")
+BOOL maglev_as_top_tier  false 
+BOOL maglev_assert  false  "insert extra assertion in maglev code")
+DEBUG_BOOL maglev_assert_stack_size  true 
+BOOL maglev_break_on_entry  false  "insert an int3 on maglev entries")
+BOOL maglev_build_code_on_background  true 
+BOOL maglev_cons_string_elision  true 
+BOOL maglev_cse  true  "common subexpression elimination")
+BOOL maglev_deopt_data_on_background  true 
+BOOL maglev_destroy_on_background  true 
+BOOL maglev_dumping  false  "enable frame dumping in maglev")
+BOOL maglev_escape_analysis  true 
+STRING maglev_filter  "*"  "optimization filter for the maglev compiler")
+BOOL maglev_function_context_specialization  true 
+BOOL maglev_hoist_osr_value_phi_untagging  true 
+BOOL maglev_inline_api_calls  false 
+BOOL maglev_inline_date_accessors  false 
+BOOL maglev_inlining  true 
+BOOL maglev_loop_peeling  true 
+INT maglev_loop_peeling_max_size  400 
+INT maglev_max_small_graph_size  10 
+BOOL maglev_non_eager_inlining  false 
+BOOL maglev_optimistic_peeled_loops  true 
+BOOL maglev_osr  true  "use maglev as on-stack replacement target")
+BOOL maglev_overwrite_budget  false 
+BOOL maglev_overwrite_osr_budget  false 
+BOOL maglev_poly_calls  true  "Support (inlining) polymorphic calls")
+BOOL maglev_pretenure_store_values  true 
+BOOL maglev_print_bytecode  false 
+BOOL maglev_print_feedback  true 
+STRING maglev_print_filter  "*" 
+BOOL maglev_print_inlined  true 
+BOOL maglev_print_provenance  true 
+BOOL maglev_range_verification  false 
+BOOL maglev_reuse_stack_slots  true 
+BOOL maglev_stats  false  "print Maglev statistics")
+BOOL maglev_stats_nvp  false 
+BOOL maglev_truncation  true  "Enable Maglev truncation pass")
+BOOL maglev_untagged_phis  true 
+BOOL managed_zone_memory  false 
+BOOL managed_zone_memory_for_isolate_independent_memory  false 
+BOOL manual_evacuation_candidates_selection  false 
+STRING map_counters  ""  "Map counters to a file")
+INT max_fast_properties  128 
+INT max_inlined_bytecode_size  460 
+INT max_inlined_bytecode_size_absolute  4600 
+INT max_inlined_bytecode_size_cumulative  920 
+INT max_inlined_bytecode_size_small  30 
+INT max_inlined_bytecode_size_small_total  30000 
+INT max_inlined_bytecode_size_small_with_heapnum_in_out  75 
+BOOL max_lazy  false  "ignore eager compilation hints")
+INT max_maglev_eager_inlined_bytecode_size  30 
+INT max_maglev_inlined_bytecode_size  100 
+INT max_maglev_inlined_bytecode_size_cumulative  920 
+INT max_maglev_inlined_bytecode_size_small  27 
+INT max_maglev_inlined_bytecode_size_small_total  3000 
+INT max_maglev_inlined_bytecode_size_small_with_heapnum_in_out  75 
+UINT max_opt  999 
+INT max_optimized_bytecode_size  60 * KB 
+INT max_serializer_nesting  25 
+INT max_stack_trace_source_length  300 
+INT max_turbolev_eager_inlined_bytecode_size  30 
+INT max_valid_polymorphic_map_count  DEFAULT_MAX_POLYMORPHIC_MAP_COUNT 
+INT max_wasm_functions  wasm::kV8MaxWasmDefinedFunctions 
+STRING mcpu  "auto"  "enable optimization for specific cpu")
+BOOL memory_balancer  false 
+FLOAT memory_balancer_c_value  3e-10 
+BOOL memory_pool  true 
+BOOL memory_pool_release_before_memory_pressure_gcs  true 
+BOOL memory_pool_release_on_malloc_failures  false 
+BOOL memory_protection_keys  true 
+BOOL memory_reducer  true  "use memory reducer")
+INT memory_reducer_delay_ms  8'000  "Delay before memory reducer start")
+BOOL memory_reducer_for_small_heaps  true 
+INT memory_reducer_gc_count  2 
+STRING mfloat_abi  "auto" 
+FLOAT min_inlining_frequency  0.15  "minimum frequency for inlining")
+FLOAT min_maglev_inlining_frequency  0.95 
+INT minimum_invocations_after_ic_update  500 
+INT minimum_invocations_before_optimization  2 
+BOOL minor_gc_task  true  "schedule minor GC tasks")
+UINT minor_gc_task_trigger  80 
+BOOL minor_gc_task_with_lower_priority  true 
+BOOL minor_ms  false  "perform young generation mark sweep GCs")
+UINT minor_ms_concurrent_marking_trigger  90 
+UINT minor_ms_max_page_age  4 
+INT minor_ms_page_promotion_max_lab_threshold  30 
+INT minor_ms_page_promotion_threshold  50 
+BOOL minor_ms_shortcut_strings  false 
+BOOL_READONLY minor_ms_shortcut_strings  false 
+BOOL minor_ms_trace_fragmentation  false 
+BOOL move_object_start  true  "enable moving of object starts")
+BOOL multi_mapped_mock_allocator  false 
+BOOL nam  def  cmt) FLAG(BOOL, bool, nam, def, cmt)
+FLOAT nam  def  cmt) FLAG(FLOAT, double, nam, def, cmt)
+INT nam  def  cmt) FLAG(INT, int, nam, def, cmt)
+STRING nam  def  cmt) FLAG(STRING, const char*, nam, def, cmt)
+UINT nam  def  cmt) FLAG(UINT, unsigned int, nam, def, cmt)
+BOOL_READONLY nam  def  cmt) \
+BOOL nam  false  cmt)
+BOOL_READONLY nam  false  cmt)
+BOOL native_code_counters  DEBUG_BOOL 
+BOOL new_old_generation_heap_size  false 
+BOOL omit_default_ctors  true  "omit calling default ctors in bytecode")
+BOOL_READONLY opt  false 
+BOOL optimize_for_input_handling  false 
+BOOL optimize_for_size  false 
+BOOL optimize_gc_for_battery  false  "optimize GC for battery")
+BOOL osr_from_maglev  false 
+INT osr_to_tierup  1 
+BOOL page_promotion  true  "promote pages based on utilization")
+INT page_promotion_threshold  70 
+BOOL parallel_compaction  true  "use parallel compaction")
+BOOL parallel_gc_clearing  true 
+BOOL parallel_marking  true  "use parallel marking in atomic pause")
+BOOL parallel_pause_for_gc_in_background  true 
+BOOL parallel_pointer_update  true 
+BOOL parallel_reclaim_unmodified_wrappers  true 
+BOOL parallel_scavenge  true  "parallel scavenge")
+BOOL parse_only  false  "only parse the sources")
+FLOAT parser_ablation_amount  0.8 
+BOOL partial_constant_pool  true 
+STRING perf_basic_prof_path  DEFAULT_PERF_BASIC_PROF_PATH 
+STRING perf_prof_path  DEFAULT_PERF_PROF_PATH 
+BOOL perfetto_code_logger  false 
+BOOL predictable  false  "enable predictable mode")
+BOOL predictable_gc_schedule  false 
+FLOAT preparser_ablation_amount  0.8 
+BOOL print_all_code  false  "enable all flags related to printing code")
+BOOL print_all_exceptions  false 
+BOOL print_ast  false  "print source AST")
+BOOL print_break_location  false  "print source location on debug break")
+BOOL print_builtin_code  false  "print generated code for builtins")
+STRING print_builtin_code_filter  "*" 
+BOOL print_builtin_size  false  "print code size for builtins")
+BOOL print_bytecode  false 
+STRING print_bytecode_filter  "*" 
+BOOL print_code  false  "print generated code")
+BOOL print_code_verbose  false  "print more information for code")
+BOOL print_deopt_stress  false  "print number of possible deopt points")
+BOOL print_feature_flags_json  false 
+BOOL print_flag_values  false  "Print all flag values of V8")
+BOOL print_gc_clearing_dependency_graph  false 
+BOOL print_global_handles  false  "report global handles after GC")
+BOOL print_handles  false  "report handles after GC")
+BOOL print_maglev_code  false  "print maglev code")
+BOOL_READONLY print_maglev_deopt_verbose  false 
+BOOL print_maglev_deopt_verbose  false  "print verbose deopt info")
+BOOL print_maglev_graph  false  "print the final maglev graph")
+BOOL_READONLY print_maglev_graph  false  "print the final maglev graph")
+BOOL_READONLY print_maglev_graphs  false 
+BOOL print_maglev_graphs  false  "print maglev graph across all phases")
+BOOL print_opt_code  false  "print optimized code")
+STRING print_opt_code_filter  "*"  "filter for printing optimized code")
+BOOL print_opt_source  false 
+BOOL print_regexp_bytecode  false  "print generated regexp bytecode")
+BOOL print_regexp_code  false  "print generated regexp code")
+BOOL print_regexp_graph  false  "print the regexp graph")
+BOOL print_scopes  false  "print scopes")
+BOOL print_turbolev_frontend  false 
+BOOL print_turbolev_inline_functions  false 
+BOOL print_wasm_code  false  "print WebAssembly code")
+INT print_wasm_code_function_index  -1 
+BOOL print_wasm_stub_code  false  "print WebAssembly stub code")
+BOOL prof  false 
+BOOL prof_browser_mode  true 
+BOOL prof_cpp  false  "Like --prof, but ignore generated code.")
+BOOL prof_include_idle  false  "Include idle samples in the profile")
+INT prof_sampling_interval  DEFAULT_PROF_SAMPLING_INTERVAL 
+BOOL profile_deserialization  false 
+BOOL profile_guided_optimization  true  "profile guided optimization")
+BOOL profile_guided_optimization_for_empty_feedback_vector  true 
+BOOL profile_heap_snapshot  false  "dump time spent on heap snapshot")
+BOOL proto_assign_seq_opt  true 
+UINT proto_assign_seq_opt_count  2 
+INT random_gc_interval  0 
+INT random_seed  0 
+BOOL randomize_all_allocations  false 
+BOOL rcs  false  "report runtime call counts and times")
+BOOL rcs_cpu_time  false 
+BOOL redirect_code_traces  false 
+STRING redirect_code_traces_to  nullptr 
+BOOL redirect_drumbrake_traces  false 
+BOOL regexp_assemble_from_bytecode  true 
+UINT regexp_backtracks_before_fallback  50000 
+BOOL regexp_bytecode_analysis  false  "analyze regexp bytecode")
+BOOL regexp_interpret_all  false  "interpret all regexp code")
+BOOL regexp_optimization  true  "generate optimized regexp code")
+BOOL regexp_peephole_optimization  REGEXP_PEEPHOLE_OPTIMIZATION_BOOL 
+BOOL regexp_possessive_quantifier  false 
+BOOL regexp_quick_check  true 
+BOOL regexp_results_cache  true  "enable the regexp results cache")
+BOOL regexp_simd  true  "enable SIMD for regexp jit code")
+BOOL regexp_tier_up  true 
+INT regexp_tier_up_ticks  1 
+BOOL regexp_unroll  true  "unroll small {} repeats when optimizing")
+BOOL rehash_snapshot  false 
+BOOL reopt_after_lazy_deopts  true 
+BOOL reorder_builtins  false 
+BOOL resize_large_object  true  "Support resizing of large objects")
+INT retain_maps_for_n_gc  2 
+BOOL reuse_scope_infos  true  "reuse scope infos from previous compiles")
+BOOL riscv_b_extension  false 
+BOOL riscv_c_extension  false 
+BOOL riscv_constant_pool  true  "enable constant pool (RISCV only)")
+BOOL riscv_debug  false  "enable debug prints")
+STRING riscv_debug_file_path  nullptr  "path to riscv_debug_file")
+BOOL riscv_trap_to_simulator_debugger  false 
+BOOL runtime_call_stats  false  "report runtime call counts and times")
+BOOL safepoint_bump_qos_class  true 
+BOOL sampling_heap_profiler_suppress_randomness  false 
+BOOL sandbox_fuzzing  false 
+BOOL_READONLY sandbox_fuzzing  false 
+BOOL sandbox_testing  false 
+BOOL scavenger_chaos_mode  false 
+BOOL scavenger_conservative_object_pinning  false 
+BOOL scavenger_precise_object_pinning  false 
+BOOL scavenger_promote_quarantined_pages  true 
+BOOL scavenger_updates_allocation_limit  true 
+BOOL script_context_cells  true 
+BOOL script_streaming  true  "enable parsing on background")
+INT semi_space_growth_factor  2  "factor by which to grow the new space")
+BOOL serialization_statistics  false 
+BOOL_READONLY shared_heap  false 
+BOOL shared_string_table  false  "internalize strings into shared table")
+BOOL shared_strings  false  "allow sharing of strings")
+BOOL short_builtin_calls  V8_SHORT_BUILTIN_CALLS_BOOL 
+BOOL shortcut_strings_with_stack  true 
+BOOL sim_abort_on_bad_auth  true 
+BOOL sim_abort_on_shadowstack_mismatch  true 
+STRING sim_arm64_optional_features  "none" 
+INT sim_stack_alignment  16 
+INT sim_stack_alignment  8 
+INT sim_stack_size  2 * MB / KB 
+BOOL simulator_debugger  false 
+BOOL single_threaded  false  "disable the use of background tasks")
+BOOL single_threaded_gc  false  "disable the use of background gc tasks")
+BOOL single_threaded_gc_in_background  true 
+BOOL slow_debug_code  V8_ENABLE_SLOW_DEBUG_CODE_BY_DEFAULT_BOOL 
+BOOL_READONLY slow_debug_code  false  "")
+BOOL slow_histograms  false 
+UINT smi_string_cache_size  8192  "Full size of SmiStringCache")
+BOOL sparkplug  ENABLE_SPARKPLUG_BY_DEFAULT 
+BOOL sparkplug_dumping  false 
+STRING sparkplug_filter  "*"  "filter for Sparkplug baseline compiler")
+BOOL sparkplug_needs_short_builtins  false 
+BOOL_READONLY sparkplug_plus  false 
+BOOL sparkplug_plus  false  "enable dynamic patching on baseline code")
+INT stack_size  V8_DEFAULT_STACK_SIZE_KB 
+INT stack_trace_limit  10  "number of stack frames to capture")
+BOOL stack_trace_on_illegal  false 
+STRING startup_blob  nullptr 
+STRING startup_src  nullptr 
+STRING static_roots_src  nullptr 
+BOOL_READONLY sticky_mark_bits  V8_ENABLE_STICKY_MARK_BITS_BOOL 
+INT stop_sim_at  0  "Simulator stop after x number of instructions")
+BOOL stress_background_compile  false 
+BOOL stress_branch_hinting  false 
+BOOL stress_compaction  false 
+BOOL stress_compaction_random  false 
+BOOL stress_concurrent_allocation  false 
+BOOL stress_concurrent_inlining_attach_code  false 
+BOOL stress_flush_code  false  "stress code flushing")
+BOOL stress_ic  false  "exercise interesting paths in ICs more often")
+BOOL stress_incremental_marking  false 
+BOOL stress_inline  false 
+BOOL stress_lazy  false  "stress lazy compilation")
+INT stress_lazy_compilation  0 
+BOOL stress_lazy_source_positions  false 
+BOOL stress_maglev  false  "trigger maglev compilation earlier")
+BOOL_READONLY stress_maglev  false  "trigger maglev compilation earlier")
+INT stress_marking  0 
+BOOL stress_per_context_marking_worklist  false 
+INT stress_runs  0  "number of stress runs")
+INT stress_sampling_allocation_profiler  0 
+INT stress_scavenge  0 
+BOOL stress_scavenger_conservative_object_pinning_random  false 
+BOOL stress_snapshot  false 
+BOOL stress_validate_asm  false  "try to validate everything as asm.js")
+BOOL stress_wasm_code_gc  false 
+BOOL stress_wasm_memory_moving  false 
+BOOL stress_wasm_stack_switching  false 
+BOOL_READONLY string_slices  true  "use string slices")
+BOOL super_ic  true  "use an IC for super property loads")
+BOOL suppress_asm_messages  false 
+INT switch_table_min_cases  6 
+INT switch_table_spread_threshold  3 
+STRING target_arch  nullptr 
+BOOL target_is_simulator  false 
+STRING target_os  nullptr  "The mksnapshot target os. (mksnapshot only)")
+BOOL test_only_unsafe  false 
+BOOL test_small_max_function_context_stub_size  false 
+BOOL testing_bool_flag  true  "testing_bool_flag")
+BOOL testing_bool_flag_A  false  "testing_bool_flag_A")
+BOOL testing_bool_flag_B  true  "testing_bool_flag_B")
+BOOL testing_bool_flag_C  false  "testing_bool_flag_C")
+FLOAT testing_float_flag  2.5  "float-flag")
+INT testing_int_flag  13  "testing_int_flag")
+INT testing_prng_seed  42  "Seed used for threading test randomness")
+STRING testing_string_flag  "Hello  world!", "string-flag")
+BOOL text_is_readable  true 
+BOOL trace  false  "trace javascript function calls")
+INT trace_allocation_stack_interval  -1 
+BOOL trace_asm_parser  false  "verbose logging of asm.js parse failures")
+BOOL trace_asm_scanner  false 
+BOOL trace_asm_time  false  "print asm.js timing info to the console")
+DEBUG_BOOL trace_backing_store  false  "trace backing store events")
+BOOL trace_baseline  false  "trace baseline compilation")
+BOOL trace_baseline_batch_compilation  false 
+BOOL trace_baseline_exec  false 
+BOOL trace_block_coverage  false 
+BOOL trace_code_range_allocation  false 
+BOOL trace_compilation_dependencies  false  "trace code dependencies")
+BOOL trace_compiler_dispatcher  false 
+BOOL trace_concurrent_marking  false  "trace concurrent marking")
+BOOL trace_concurrent_recompilation  false 
+BOOL trace_context_disposal  false  "trace context disposal")
+BOOL trace_contexts  false  "trace contexts operations")
+BOOL trace_creation_allocation_sites  false 
+BOOL trace_deopt  false  "trace deoptimization")
+BOOL trace_deopt_verbose  false  "extra verbose deoptimization tracing")
+BOOL trace_deserialization  false  "Trace the snapshot deserialization.")
+BOOL trace_detached_contexts  false 
+BOOL trace_drumbrake_bytecode_generator  false 
+BOOL trace_drumbrake_compact_bytecode  false 
+BOOL trace_drumbrake_execution  false 
+BOOL trace_drumbrake_execution_verbose  false 
+INT trace_duplicate_threshold_kb  0 
+BOOL trace_elements_transitions  false  "trace elements transitions")
+BOOL trace_environment_liveness  false 
+BOOL trace_evacuation  false  "report evacuation statistics")
+BOOL trace_evacuation_candidates  false 
+BOOL trace_experimental_regexp_engine  false 
+BOOL trace_file_names  false 
+BOOL trace_flush_code  false  "trace bytecode flushing")
+BOOL trace_for_in_enumerate  false  "Trace for-in enumerate slow-paths")
+BOOL trace_fragmentation  false  "report fragmentation for old space")
+BOOL trace_fragmentation_verbose  false 
+BOOL trace_gc  false 
+BOOL trace_gc_freelists  false 
+BOOL trace_gc_freelists_verbose  false 
+BOOL trace_gc_heap_layout  false 
+BOOL trace_gc_heap_layout_ignore_minor_gc  true 
+BOOL trace_gc_ignore_scavenger  false 
+BOOL trace_gc_nvp  false 
+BOOL trace_gc_object_stats  false 
+BOOL trace_gc_object_stats_all_objects  false 
+BOOL trace_gc_verbose  false 
+BOOL trace_generalization  false  "trace map generalization")
+BOOL trace_heap_broker  false 
+BOOL trace_heap_broker_verbose  false 
+BOOL trace_ignition  false 
+BOOL trace_ignition_codegen  false 
+BOOL trace_incremental_marking  false 
+BOOL trace_isolates  false  "trace isolate state changes")
+BOOL trace_lazy  false  "trace lazy compilation")
+DEBUG_BOOL trace_liftoff  false 
+BOOL trace_maglev_escape_analysis  false  "trace maglev escape analysis")
+BOOL trace_maglev_graph_building  false  "trace maglev graph building")
+BOOL trace_maglev_inlining  false  "trace maglev inlining")
+BOOL trace_maglev_kna_processor  false 
+BOOL trace_maglev_loop_speeling  false  "trace maglev loop SPeeling")
+BOOL trace_maglev_object_tracking  false 
+BOOL_READONLY trace_maglev_phi_untagging  false 
+BOOL trace_maglev_phi_untagging  false  "trace maglev phi untagging")
+BOOL trace_maglev_range_analysis  false 
+BOOL_READONLY trace_maglev_regalloc  false 
+BOOL trace_maglev_regalloc  false  "trace maglev register allocation")
+BOOL trace_maglev_truncation  false  "trace maglev truncation pass")
+BOOL trace_memory_balancer  false  "print memory balancer behavior.")
+BOOL trace_memory_reducer  false  "print memory reducer behavior")
+BOOL trace_migration  false  "trace object migration")
+BOOL trace_minor_ms_parallel_marking  false 
+BOOL trace_module_status  false 
+BOOL trace_mutator_utilization  false 
+BOOL trace_normalization  false 
+BOOL trace_number_string_cache  false 
+BOOL trace_opt  false  "trace optimized compilation")
+BOOL trace_opt_stats  false  "trace optimized compilation statistics")
+BOOL trace_opt_status  false 
+BOOL trace_opt_verbose  false 
+BOOL trace_osr  false  "trace on-stack replacement")
+BOOL trace_page_promotions  false  "trace page promotion decisions")
+BOOL trace_parallel_scavenge  false  "trace parallel scavenge")
+BOOL trace_pending_allocations  false 
+BOOL trace_pretenuring  false 
+BOOL trace_pretenuring_statistics  false 
+BOOL trace_protector_invalidation  false 
+BOOL trace_prototype_users  false 
+BOOL trace_rail  false  "trace RAIL mode")
+BOOL trace_read_only_promotion  false 
+BOOL trace_read_only_promotion_verbose  false 
+BOOL trace_regexp_assembler  false 
+BOOL_READONLY trace_regexp_assembler  false 
+BOOL trace_regexp_bytecode_analysis  false 
+BOOL trace_regexp_bytecodes  false  "trace regexp bytecode execution")
+BOOL trace_regexp_compiler  false  "trace regexp compilation")
+BOOL trace_regexp_graph  false  "trace the regexp graph")
+BOOL trace_regexp_graph_building  false 
+BOOL_READONLY trace_regexp_graph_building  false 
+BOOL trace_regexp_parser  false  "trace regexp parsing")
+BOOL trace_regexp_peephole_optimization  false 
+BOOL_READONLY trace_regexp_peephole_optimization  false 
+BOOL_READONLY trace_regexp_tier_up  false 
+BOOL trace_regexp_tier_up  false  "trace regexp tiering up execution")
+BOOL trace_resize_large_object  false  "trace resizing of large objects")
+BOOL trace_serializer  false  "print code serializer trace")
+BOOL trace_shadowstack  false 
+BOOL trace_sim  false  "Trace simulator execution")
+BOOL trace_sim_messages  false 
+BOOL trace_store_elimination  false  "trace store elimination")
+BOOL trace_stress_marking  false  "trace stress marking progress")
+BOOL trace_stress_scavenge  false  "trace stress scavenge progress")
+BOOL trace_temporal  false  "trace temporal code")
+BOOL trace_track_allocation_sites  false 
+BOOL trace_turbo  false  "trace generated TurboFan IR")
+BOOL trace_turbo_bailouts  false  "trace TurboFan's various bailouts")
+STRING trace_turbo_cfg_file  nullptr 
+BOOL trace_turbo_escape  false  "enable tracing in escape analysis")
+STRING trace_turbo_file_prefix  "turbo" 
+STRING trace_turbo_filter  "*" 
+BOOL trace_turbo_graph  false  "trace generated TurboFan graphs")
+BOOL trace_turbo_inlining  false  "trace TurboFan inlining")
+BOOL trace_turbo_load_elimination  false 
+STRING trace_turbo_path  nullptr 
+BOOL trace_turbo_reduction  false  "trace TurboFan's various reducers")
+BOOL trace_turbo_scheduled  false  "trace TurboFan IR with schedule")
+BOOL trace_turbo_scheduler  false  "trace TurboFan's scheduler")
+BOOL trace_turbo_types  true  "trace TurboFan's types")
+BOOL trace_turbolev_graph_building  false 
+BOOL trace_unmapper  false  "Trace the unmapping")
+BOOL trace_unoptimized  false 
+BOOL trace_verify_csa  false  "trace code stubs verification")
+BOOL trace_wasm  false  "trace wasm function calls")
+BOOL trace_wasm_code_gc  false  "trace garbage collection of wasm code")
+BOOL trace_wasm_compilation_hints  false 
+BOOL trace_wasm_compilation_times  false 
+DEBUG_BOOL trace_wasm_compiler  false  "trace compiling of wasm code")
+DEBUG_BOOL trace_wasm_decoder  false  "trace decoding of wasm code")
+BOOL trace_wasm_gdb_remote  false  "trace Webassembly GDB-remote server")
+BOOL trace_wasm_generate_compilation_hints  false 
+BOOL trace_wasm_globals  false 
+BOOL trace_wasm_inlining  false  "trace wasm inlining")
+DEBUG_BOOL trace_wasm_instances  false 
+DEBUG_BOOL trace_wasm_lazy_compilation  false 
+BOOL trace_wasm_loop_peeling  false  "trace wasm loop peeling")
+BOOL trace_wasm_memory  false 
+DEBUG_BOOL trace_wasm_native_heap  false 
+BOOL trace_wasm_offheap_memory  false 
+BOOL trace_wasm_revectorize  false  "trace wasm revectorize")
+DEBUG_BOOL trace_wasm_serialization  false 
+BOOL trace_wasm_simd_shuffle  false  "trace wasm simd shuffle")
+DEBUG_BOOL trace_wasm_stack_switching  false 
+DEBUG_BOOL trace_wasm_streaming  false 
+BOOL trace_wasm_typer  false  "trace wasm typer")
+BOOL trace_zone_stats  false  "trace zone memory usage")
+BOOL trace_zone_type_stats  false  "trace per-type zone memory usage")
+BOOL track_detached_contexts  true 
+BOOL track_field_types  true  "track field types")
+BOOL track_gc_object_stats  false 
+BOOL transition_strings_during_gc_with_stack  false 
+BOOL trap_on_abort  false  "trap instead of calling abort for debugging")
+BOOL_READONLY trap_on_abort  true  "")
+BOOL trim_descriptor_arrays_in_gc  true 
+BOOL trim_descriptor_arrays_in_gc_with_stack  true 
+BOOL turbo_allocation_folding  true  "TurboFan allocation folding")
+BOOL turbo_cf_optimization  true  "optimize control flow in TurboFan")
+BOOL turbo_compress_frame_translations  false 
+BOOL turbo_elide_frames  true  "enable frame elision in TurboFan")
+BOOL turbo_escape  true  "enable escape analysis")
+BOOL turbo_fast_api_calls  V8_ENABLE_TURBOFAN_BOOL 
+STRING turbo_filter  "*"  "optimization filter for TurboFan compiler")
+BOOL turbo_inline_array_builtins  true 
+BOOL turbo_inlining  true  "enable inlining in TurboFan")
+BOOL turbo_instruction_scheduling  false 
+BOOL turbo_jt  true  "enable jump threading in TurboFan")
+BOOL turbo_load_elimination  true  "enable load elimination in TurboFan")
+STRING turbo_log_builtins_count_input  nullptr 
+BOOL turbo_loop_peeling  true  "TurboFan loop peeling")
+BOOL turbo_loop_rotation  true  "TurboFan loop rotation")
+BOOL turbo_loop_variable  true  "TurboFan loop variable optimization")
+BOOL turbo_move_optimization  true  "optimize gap moves in TurboFan")
+BOOL turbo_optimize_apply  true  "optimize Function.prototype.apply")
+BOOL turbo_optimize_inlined_js_wasm_wrappers  false 
+BOOL turbo_optimize_math_minmax  true 
+BOOL turbo_profiling  false  "enable basic block profiling in TurboFan")
+STRING turbo_profiling_input  nullptr 
+BOOL turbo_profiling_verbose  false 
+BOOL_READONLY turbo_rewrite_far_jumps  false 
+BOOL turbo_rewrite_far_jumps  true 
+BOOL_READONLY turbo_splitting  true 
+BOOL turbo_stats  false  "print TurboFan statistics")
+BOOL turbo_stats_nvp  false 
+BOOL turbo_stats_wasm  false 
+BOOL turbo_store_elimination  true 
+BOOL turbo_stress_instruction_scheduling  false 
+BOOL_READONLY turbo_string_builder  false 
+BOOL_READONLY turbo_typer_hardening  true 
+BOOL turbo_verify  DEBUG_BOOL  "verify TurboFan graphs at each phase")
+BOOL turbo_verify_allocation  DEBUG_BOOL 
+STRING turbo_verify_machine_graph  nullptr 
+BOOL turbo_wasm_address_reassociation  true 
+BOOL_READONLY turbofan  false 
+BOOL turbofan  true 
+BOOL turbofan_dumping  false  "enable frame dumping in turbofan")
+BOOL turbofan_inline_date_accessors  false 
+BOOL turbolev  false 
+BOOL turbolev_non_eager_inlining  true 
+BOOL turboshaft  true  "enable TurboFan's Turboshaft phases for JS")
+BOOL turboshaft_enable_debug_features  DEBUG_BOOL 
+BOOL turboshaft_enable_debug_features  false 
+BOOL turboshaft_load_elimination  true 
+BOOL turboshaft_loop_unrolling  true 
+BOOL turboshaft_string_concat_escape_analysis  true 
+BOOL turboshaft_trace_emitted  false 
+BOOL_READONLY turboshaft_trace_emitted  false 
+BOOL turboshaft_trace_if_else_to_switch  false 
+BOOL_READONLY turboshaft_trace_if_else_to_switch  false 
+BOOL turboshaft_trace_intermediate_reductions  false 
+BOOL_READONLY turboshaft_trace_intermediate_reductions  false 
+BOOL turboshaft_trace_load_elimination  false 
+BOOL_READONLY turboshaft_trace_load_elimination  false 
+BOOL turboshaft_trace_peeling  false 
+BOOL turboshaft_trace_reduction  false 
+BOOL_READONLY turboshaft_trace_reduction  false 
+BOOL turboshaft_trace_typing  false 
+BOOL turboshaft_trace_unrolling  false 
+BOOL turboshaft_trusted_load_elimination  false 
+BOOL turboshaft_verify_load_elimination  false 
+BOOL turboshaft_verify_load_store_taggedness  false 
+BOOL_READONLY turboshaft_verify_load_store_taggedness  false 
+BOOL turboshaft_verify_reductions  false 
+BOOL turboshaft_wasm_load_elimination  true 
+BOOL unbox_double_arrays  true  "automatically unbox arrays of doubles")
+BOOL unmap_holes  true  "unmap the page containing the holes.")
+BOOL use_external_strings  false  "Use external strings for source code")
+BOOL use_ic  true  "use inline caching")
+BOOL use_libm_trig_functions  true  "use libm trig functions")
+BOOL use_marking_progress_bar  true 
+BOOL use_original_message_for_stack_trace  true 
+BOOL use_osr  true  "use on-stack replacement")
+BOOL use_std_math_pow  false 
+BOOL use_std_math_pow  true 
+BOOL use_strict  false  "enforce strict mode")
+INT v8_os_page_size  0  "override OS page size (in KBytes)")
+BOOL validate_asm  true 
+BOOL verify_bytecode_full  DEBUG_BOOL 
+BOOL verify_bytecode_light  false 
+BOOL verify_code_merge  false  "Verify scope infos after merge")
+BOOL verify_csa  DEBUG_BOOL 
+BOOL_READONLY verify_csa  false 
+BOOL verify_get_js_builtin_state  false 
+BOOL_READONLY verify_heap  false 
+BOOL verify_heap  false  "verify heap pointers before and after GC")
+BOOL verify_heap_skip_remembered_set  false 
+BOOL verify_predictable  false 
+BOOL verify_simplified_lowering  false 
+BOOL verify_snapshot_checksum  DEBUG_BOOL 
+BOOL verify_turboshaft  false 
+BOOL_READONLY verify_turboshaft  false 
+BOOL_READONLY verify_write_barriers  V8_VERIFY_WRITE_BARRIERS_BOOL 
+BOOL vtune_prof_annotate_wasm  false 
+BOOL wasm_allow_mixed_eh_for_testing  false 
+BOOL wasm_async_compilation  true 
+BOOL wasm_bounds_checks  true 
+BOOL wasm_bulkmem_inlining  true 
+INT wasm_caching_hard_threshold  1'000'000 
+INT wasm_capi_thread_pool_size  0 
+BOOL wasm_code_coverage  false  "enable Wasm code coverage")
+BOOL_READONLY wasm_code_coverage  false  "enable Wasm code coverage")
+BOOL wasm_code_gc  true  "enable garbage collection of wasm code")
+INT wasm_debug_mask_for_testing  0 
+BOOL wasm_deopt  true  "enable deopts in optimized wasm functions")
+BOOL wasm_dynamic_tiering  V8_ENABLE_TURBOFAN_BOOL 
+INT wasm_eager_tier_up_function  -1 
+BOOL wasm_enable_exec_time_histograms  false 
+INT wasm_exec_time_histogram_sample_duration  1000 
+INT wasm_exec_time_histogram_sample_period  4000 
+INT wasm_exec_time_histogram_slow_threshold  10000 
+INT wasm_exec_time_slow_threshold_samples_count  1 
+BOOL wasm_fuzzer_gen_test  false 
+BOOL wasm_gdb_remote  false 
+INT wasm_gdb_remote_port  DEFAULT_WASM_GDB_REMOTE_PORT 
+BOOL wasm_generate_compilation_hints  false 
+BOOL wasm_generic_wrapper  true 
+BOOL wasm_inlining  true 
+BOOL wasm_inlining_call_indirect  true 
+BOOL wasm_inlining_ignore_call_counts  false 
+BOOL_READONLY wasm_jitless  false 
+BOOL wasm_jitless_if_available_for_testing  false 
+BOOL wasm_jitless_if_available_for_testing  false  "")
+BOOL wasm_lazy_compilation  true 
+BOOL wasm_loop_peeling  true  "enable loop peeling for wasm functions")
+BOOL wasm_loop_unrolling  true 
+BOOL wasm_math_intrinsics  true 
+UINT wasm_max_code_space_size_mb  kDefaultMaxWasmCodeSpaceSizeMb 
+UINT wasm_max_committed_code_mb  kMaxCommittedWasmCodeMB 
+INT wasm_max_initial_code_space_reservation  0 
+UINT wasm_max_mem_pages  kMaxUInt32 
+UINT wasm_max_table_size  wasm::kV8MaxWasmTableSize 
+BOOL_READONLY wasm_memory64_trap_handling  false 
+BOOL wasm_memory64_trap_handling  true 
+BOOL wasm_native_module_cache  true  "enable the native module cache")
+INT wasm_num_compilation_tasks  128 
+BOOL wasm_pause_waiting_for_debugger  false 
+BOOL wasm_simd_opt  false  "enable optimizations for Webassembly SIMD")
+BOOL wasm_stack_checks  true 
+INT wasm_stack_switching_stack_size  V8_DEFAULT_STACK_SIZE_KB 
+BOOL wasm_staging  false  "enable staged wasm features")
+BOOL wasm_sync_tier_up  false 
+BOOL wasm_test_streaming  false 
+INT wasm_tier_mask_for_testing  0 
+BOOL wasm_tier_up  V8_ENABLE_TURBOFAN_BOOL 
+INT wasm_tier_up_filter  -1  "only tier-up function with this index")
+INT wasm_tiering_budget  13'000'000 
+INT wasm_wrapper_tiering_budget  wasm::kGenericWrapperBudget 
+BOOL win64_unwinding_info  true  "Enable unwinding info for Windows/x64")
+
+=== EXPERIMENTAL FEATURES ===
+EXPERIMENTAL nam  cmt)         \
+DEFINE_EXPERIMENTAL_FEATURE(
+EXPERIMENTAL conservative_stack_scanning 
+DEFINE_EXPERIMENTAL_FEATURE(
+EXPERIMENTAL maglev_licm  "loop invariant code motion")
+DEFINE_EXPERIMENTAL_FEATURE(
+EXPERIMENTAL maglev_range_analysis 
+DEFINE_EXPERIMENTAL_FEATURE(
+DEFINE_EXPERIMENTAL_FEATURE(
+DEFINE_EXPERIMENTAL_FEATURE(
+DEFINE_EXPERIMENTAL_FEATURE(
+DEFINE_EXPERIMENTAL_FEATURE(
+EXPERIMENTAL feedback_normalization 
+EXPERIMENTAL maglev_object_tracking 
+DEFINE_EXPERIMENTAL_FEATURE(
+DEFINE_EXPERIMENTAL_FEATURE(
+EXPERIMENTAL turboshaft_typed_optimizations 
+EXPERIMENTAL experimental_wasm_simd_opt 
+DEFINE_EXPERIMENTAL_FEATURE(
+DEFINE_EXPERIMENTAL_FEATURE(
+DEFINE_EXPERIMENTAL_FEATURE(
+EXPERIMENTAL wasm_deopt 
+EXPERIMENTAL experimental_wasm_##feat  \
+DEFINE_EXPERIMENTAL_FEATURE(
+DEFINE_EXPERIMENTAL_FEATURE(
+DEFINE_EXPERIMENTAL_FEATURE(
+EXPERIMENTAL wasm_jitless 
+DEFINE_EXPERIMENTAL_FEATURE(
+EXPERIMENTAL lazy_compile_dispatcher 
+DEFINE_EXPERIMENTAL_FEATURE(
+DEFINE_EXPERIMENTAL_FEATURE(
+EXPERIMENTAL mega_dom_ic  "use MegaDOM IC state for API objects")
+DEFINE_EXPERIMENTAL_FEATURE(
+DEFINE_EXPERIMENTAL_FEATURE(
+DEFINE_EXPERIMENTAL_FEATURE(
+EXPERIMENTAL shared_heap 
+DEFINE_EXPERIMENTAL_FEATURE(
+DEFINE_EXPERIMENTAL_FEATURE(

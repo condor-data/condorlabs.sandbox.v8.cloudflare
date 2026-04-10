@@ -1,0 +1,383 @@
+# lol-html Reference
+# Fonte: /tmp/lol-html-extract
+# Extraido: 2026-04-10T01:19:02Z
+
+=== Cargo.toml (root) ===
+[package]
+name = "lol_html"
+version = "2.8.0"
+authors = ["Ivan Nikulin <inikulin@cloudflare.com, ifaaan@gmail.com>"]
+license = "BSD-3-Clause"
+description = "Streaming HTML rewriter/parser with CSS selector-based API"
+repository = "https://github.com/cloudflare/lol-html"
+documentation = "https://docs.rs/lol-html"
+categories = ["parser-implementations", "web-programming"]
+keywords = ["html", "css-selectors", "parser", "rewriter", "streaming"]
+readme = "README.md"
+include = ["/Cargo.toml", "/LICENSE", "/README.md", "/media", "/src"]
+edition = "2024"
+rust-version = "1.85"
+
+[lib]
+# Disable libtest to make sure criterion can parse the command line flags.
+# See https://bheisler.github.io/criterion.rs/book/faq.html and https://github.com/rust-lang/rust/issues/47241.
+bench = false
+
+[features]
+debug_trace = []
+# Unstable: for internal use only
+integration_test = []
+
+[[bench]]
+harness = false
+name = "bench"
+
+[dependencies]
+bitflags = "2.9.1"
+cfg-if = "1.0.1"
+cssparser = "0.36"
+encoding_rs = "0.8.35"
+hashbrown = "0.16.0"
+# hashbrown uses foldhash without std, which has a performance penalty
+foldhash = { version = "0.2.0", features = ["std"] }
+memchr = "2.7.5"
+mime = "0.3.17"
+selectors = "0.35"
+thiserror = "2.0"
+precomputed-hash = "0.1.1"
+
+[dev-dependencies]
+criterion = "0.8.0"
+glob = "0.3.2"
+html5ever = "0.38"
+markup5ever_rcdom = "0.38.0"
+hashbrown = { version = "0.16.0", features = ["serde"] }
+serde = "1.0.219"
+serde_derive = "1.0.219"
+serde_json = "1.0.140"
+static_assertions = "1.1.0"
+rand = "0.10"
+itertools = "0.14"
+
+[lints.rust]
+keyword_idents = { level = "deny", priority = 1 }
+for_loops_over_fallibles = "deny"
+unit_bindings = "deny"
+absolute_paths_not_starting_with_crate = "warn"
+elided_lifetimes_in_paths = "warn"
+macro_use_extern_crate = "warn"
+meta_variable_misuse = "warn"
+redundant_lifetimes = "warn"
+trivial_numeric_casts = "warn"
+unnameable_types = "warn"
+unused_qualifications = "warn"
+
+=== Cargo.toml (lol_html crate) ===
+
+=== Cargo.toml (c-api) ===
+[package]
+name = "lol_html_c_api"
+version = "1.3.1"
+description = "Low output latency streaming HTML parser/rewriter"
+authors = ["Ivan Nikulin <inikulin@cloudflare.com>", "Joshua Nelson <jnelson@cloudflare.com>"]
+edition = "2024"
+links = "lolhtml"
+publish = false
+
+[features]
+default = ["capi"]
+# Required to exist for cargo-c to work
+capi = []
+
+[dependencies]
+encoding_rs = "0.8.35"
+lol_html = { path = "../" }
+libc = "0"
+thiserror = "2"
+
+[profile.release]
+panic = "abort"
+lto = true
+
+[lib]
+name = "lolhtml"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[package.metadata.capi.header]
+name = "lol_html"
+subdirectory = ""
+generation = false
+
+[package.metadata.capi.install.include]
+asset = [{ from = "include/lol_html.h" }]
+
+[package.metadata.capi.pkg_config]
+name = "lol-html"
+filename = "lol-html"
+
+=== DEVELOPING.md ===
+# Developing
+
+## Testing
+
+To run unit tests only (tests defined in `/src`):
+
+```
+cargo test
+```
+
+To run all the available tests including integration tests, C API tests and linting:
+
+```
+./scripts/test.sh
+```
+
+To run only those tests that contain a `{substring}` in their name:
+
+```
+./scripts/test.sh {substring}
+```
+
+## Running benchmarks
+
+```
+cargo bench
+```
+
+To run only those benchmarks that contain a `{substring}` in their name:
+
+```
+cargo bench {substring}
+```
+
+Test report can be found in the `target/criterion/report/index.html` file.
+
+## Useful debugging tools
+
+### HTML parser tracer
+
+The tool provides comprehensive trace information about parsing process of the given HTML input. For usage information run:
+
+```
+./scripts/parser_trace.sh -- -h
+```
+
+### CSS selector VM's AST printer
+
+The tool prints selector VM's program AST for the given list of CSS selectors. CSS selector list should be specified in the JSON format:
+
+```
+./scripts/selectors_ast.sh '["selector1", "selector2", ...]'
+```
+
+## Fuzzing
+
+### Fuzzing with [cargo-fuzz](https://rust-fuzz.github.io/book/cargo-fuzz.html)
+**NOTE:** requires Rust nightly.
+
+Run fuzzing for the crate:
+
+```
+./scripts/fuzz_with_libfuzzer.sh
+```
+
+Run fuzzing for C API:
+
+```
+./scripts/fuzz_c_api_with_libfuzzer.sh
+```
+
+### Fuzzing with [afl](https://rust-fuzz.github.io/book/afl.html)
+
+```
+./scripts/fuzz_with_afl.sh
+```
+
+### Fuzzing with [honggfuzz](https://github.com/rust-fuzz/honggfuzz-rs)
+
+```
+./scripts/fuzz_with_hongg.sh
+```
+
+=== Features (from Cargo.toml [features]) ===
+debug_trace = []
+# Unstable: for internal use only
+integration_test = []
+
+=== Fuzz targets ===
+fuzz_c_api.rs
+fuzz_rewriter.rs
+
+=== Testes ===
+/tmp/lol-html-extract/js-api/test.js
+/tmp/lol-html-extract/tests/harness/suites/html5lib_tests/test_token.rs
+/tmp/lol-html-extract/tests/harness/suites/selectors_tests.rs
+/tmp/lol-html-extract/tests/integration_tests.rs
+/tmp/lol-html-extract/scripts/test.sh
+/tmp/lol-html-extract/c-api/c-tests/src/test_doctype_api.c
+/tmp/lol-html-extract/c-api/c-tests/src/test_document_end_api.c
+/tmp/lol-html-extract/c-api/c-tests/src/tests.h
+/tmp/lol-html-extract/c-api/c-tests/src/test_non_ascii_encoding.c
+/tmp/lol-html-extract/c-api/c-tests/src/test_memory_limiting.c
+/tmp/lol-html-extract/c-api/c-tests/src/test_util.c
+/tmp/lol-html-extract/c-api/c-tests/src/test_element_api.c
+/tmp/lol-html-extract/c-api/c-tests/src/test_unsupported_selector.c
+/tmp/lol-html-extract/c-api/c-tests/src/deps/picotest/picotest.h
+/tmp/lol-html-extract/c-api/c-tests/src/deps/picotest/picotest.c
+/tmp/lol-html-extract/c-api/c-tests/src/test.c
+/tmp/lol-html-extract/c-api/c-tests/src/test_text_chunk_api.c
+/tmp/lol-html-extract/c-api/c-tests/src/test_util.h
+/tmp/lol-html-extract/c-api/c-tests/src/test_comment_api.c
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.ThreadCommissionerService: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.avconferenced: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.appleaccountd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.replayd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.lockdownmoded: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.facetimemessagestored: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/mobiletimerd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.MTLCompilerService: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.securityuploadd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.syncdefaultsd/TemporaryItems: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.syncdefaultsd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.FaceTime.FTConversationService: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.speech.localspeechrecognition: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/studentd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.transparencyd/TemporaryItems: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.transparencyd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.AppSSOAgent: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.linkd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.siriactionsd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.progressd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.iconservicesagent: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.trustd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.GenerativeFunctions.generativeexperiencesd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.triald/TemporaryItems: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.triald: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.ap.promotedcontentd/TemporaryItems: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.ap.promotedcontentd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.replicatord: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.SharePlay.GroupSessionService: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.appplaceholdersync: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.akd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.FeatureAccessAgent: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.homeenergyd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/contentlinkingd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/talagent: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.proactiveeventtrackerd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.backgroundassets.managed.helper.service: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.SafariLaunchAgent: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.ScopedBookmarkAgent: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.trial.TrialArchivingService: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.TelephonyUtilities: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.siriinferenced: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.dataaccess: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.amp.mediasharingd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.sessionkit: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/AudioComponentRegistrar: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/CrashHandlerService: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.businessservicesd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.ProtectedCloudKeySyncing: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.appstoreagent/TemporaryItems: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.appstoreagent: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.secureelementservice: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.imtransferservices.IMTransferAgent/TemporaryItems: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.imtransferservices.IMTransferAgent: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.inputanalyticsd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.BiomeAgent: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.naturallanguaged: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/mediaanalysisd-access: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/TemporaryItems: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.parsec-fbf/TemporaryItems: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.parsec-fbf: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.useractivityd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.geoanalyticsd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.amsondevicestoraged: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.tipsd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.TrustedPeersHelper: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.fileproviderd/TemporaryItems: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.fileproviderd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.dmd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.sirittsd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.siri.SuggestionsBookkeepingService: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.nsurlsessiond: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.intelligentroutingd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.WorkflowKit.BackgroundShortcutRunner: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/SandboxHelper: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.intelligenceplatformd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.keychainsharingmessagingd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.privatecloudcomputed: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.chrono/TemporaryItems: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.chrono: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.calaccessd/TemporaryItems: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.calaccessd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.remindd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/StatusKitAgent: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/duetexpertd/TemporaryItems: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/duetexpertd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.adprivacyd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.studentd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.parsecd/TemporaryItems: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.parsecd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/icdd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.identityservicesd/TemporaryItems: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.identityservicesd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.sharingd/TemporaryItems: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.sharingd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/assessmentagent: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.bluetoothuserd/TemporaryItems: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.bluetoothuserd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/heard: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.bird/TemporaryItems: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.bird: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.biomesyncd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.cloudd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.amsaccountsd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.textunderstandingd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.storekit: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/betaenrollmentagent: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.analyticsagent: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/metrickitd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.GameController.gamecontrolleragentd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.WindowManager: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/homed/TemporaryItems: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/homed: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.usernotificationsd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.email.maild: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.sociallayerd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.corespeechd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.SetStoreUpdateService: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.quicklook.ThumbnailsAgent: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.siri-distributed-evaluation: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.pluginkit/TemporaryItems: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.pluginkit: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/diagnosticextensionsd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/CSExattrCryptoService: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.accessibility.mediaaccessibilityd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.communicationtrustd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.donotdisturbd/TemporaryItems: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.donotdisturbd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.intelligenceplatform.IntelligencePlatformComputeService: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.tccd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/itunescloudd/TemporaryItems: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/itunescloudd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.CloudDocsDaemon.container-metadata-extractor: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.intelligenceflow.intelligencecontextd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.homeeventsd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.iCloudNotificationAgent: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.imagent/TemporaryItems: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.imagent: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.frauddefensed: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.weatherd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.milod: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.familycircled/TemporaryItems: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.familycircled: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.imdpersistence.IMDPersistenceAgent/TemporaryItems: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.imdpersistence.IMDPersistenceAgent: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.amsengagementd/TemporaryItems: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.amsengagementd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/proactived: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.ap.adprivacyd: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.icloud.searchpartyuseragent/TemporaryItems: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.icloud.searchpartyuseragent: Directory not empty
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/com.apple.financed: Operation not permitted
+rm: /var/folders/81/9njfp_tn05x5t6drg4779p9r0000gn/T/: Operation not permitted
