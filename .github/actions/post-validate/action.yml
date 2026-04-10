@@ -88,8 +88,20 @@ runs:
       run: |
         CONFIG="${{ inputs.config }}"
         D8="./v8-build/v8/out/d8-${CONFIG}/d8"
-        VERSION=$($D8 -e "print(version())" 2>&1 || echo "unknown")
-        SIZE=$(du -sh "$D8" 2>&1 | cut -f1 || echo "unknown")
+
+        # Extrair version — se d8 não executa, GRITAR (não esconder com "unknown")
+        if [ -x "$D8" ]; then
+          VERSION=$($D8 -e "print(version())" 2>&1)
+          if [ -z "$VERSION" ]; then
+            echo "::error::d8 executou mas version() retornou vazio!"
+            VERSION="ERROR:empty"
+          fi
+          SIZE=$(du -sh "$D8" | cut -f1)
+        else
+          echo "::error::d8 NAO EXISTE ou NAO EXECUTAVEL: $D8"
+          VERSION="ERROR:no-binary"
+          SIZE="ERROR:no-binary"
+        fi
 
         if [ "${{ inputs.build_result }}" = "success" ]; then
           python3 configs/verify-build.py update-status ${{ inputs.yaml_file }} "$CONFIG" "OK" "$VERSION" "$SIZE"
@@ -99,7 +111,12 @@ runs:
 
         git config user.name "condor-data-bot"
         git config user.email "bot@condor-data.github.io"
-        git add ${{ inputs.yaml_file }} configs/reference/ || true
+        git add ${{ inputs.yaml_file }} configs/reference/ || {
+          echo "::error::git add FALHOU! Arquivos podem nao existir."
+          echo "::error::Verificar: ls -la ${{ inputs.yaml_file }} configs/reference/"
+          ls -la ${{ inputs.yaml_file }} configs/reference/ 2>&1
+          # Nao abortar — o status update eh best-effort quando o build falhou
+        }
 
         if git diff --cached --quiet; then
           echo "Nenhuma mudanca para commitar"
@@ -123,8 +140,13 @@ runs:
       run: |
         CONFIG="${{ inputs.config }}"
         D8="./v8-build/v8/out/d8-${CONFIG}/d8"
-        VERSION=$($D8 -e "print(version())" 2>&1 || echo "unknown")
-        SIZE=$(du -sh "$D8" 2>&1 | cut -f1 || echo "unknown")
+        if [ -x "$D8" ]; then
+          VERSION=$($D8 -e "print(version())" 2>&1)
+          SIZE=$(du -sh "$D8" | cut -f1)
+        else
+          VERSION="NO_BINARY"
+          SIZE="NO_BINARY"
+        fi
 
         cat >> $GITHUB_STEP_SUMMARY << EOF
         ## Build Result: \`${{ inputs.config }}\`

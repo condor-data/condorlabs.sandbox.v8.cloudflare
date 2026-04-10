@@ -77,7 +77,18 @@ jobs:
           cd v8
           git fetch --tags origin
           git fetch origin "${V8_BRANCH}"
-          git checkout "${V8_VERSION}" 2>/dev/null || git checkout "tags/${V8_VERSION}" 2>/dev/null || git checkout "${V8_BRANCH}"
+          if git checkout "${V8_VERSION}" 2>&1; then
+            echo "Checkout tag ${V8_VERSION} OK"
+          elif git checkout "tags/${V8_VERSION}" 2>&1; then
+            echo "Checkout tags/${V8_VERSION} OK"
+          else
+            echo "::error::TAG ${V8_VERSION} NAO ENCONTRADA!"
+            echo "::error::Tentando branch ${V8_BRANCH} como fallback..."
+            git checkout "${V8_BRANCH}" || {
+              echo "::error::Branch TAMBEM FALHOU!"
+              exit 1
+            }
+          fi
           gclient sync --with_branch_heads --with_tags -D
 
       - name: Build minimal d8 for discovery
@@ -162,7 +173,14 @@ jobs:
           git config user.email "bot@condor-data.github.io"
           git add configs/reference/ configs/v8-cf.yaml
           git diff --cached --stat
-          git commit -m "Update V8 flag reference (${{ steps.version.outputs.V8_VERSION }})" || echo "No changes to commit"
+          if git diff --cached --quiet; then
+            echo "Nenhuma mudanca nos reference files (ja atualizados)"
+          else
+            git commit -m "Update V8 flag reference (${{ steps.version.outputs.V8_VERSION }})" || {
+              echo "::error::git commit FALHOU! Disco cheio? Lock?"
+              exit 1
+            }
+          fi
           git push
 
       - name: Upload reference as artifact
