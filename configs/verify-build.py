@@ -330,12 +330,23 @@ def cmd_post(yaml_path: str, config_name: str, d8_path: str):
         passed += 1
 
     # 5. Sandbox API (depende da family)
+    # Determinar flag correta: usar --sandbox-testing ou --sandbox-fuzzing do YAML
+    # (ambos implicam --expose-memory-corruption-api + instalam crash filter).
+    # --expose-memory-corruption-api sozinho pode falhar em ambientes CI (flaky).
+    # O crash filter NAO interfere em print(typeof Sandbox) — so ativa em SIGSEGV real.
+    sandbox_api_flag = "--expose-memory-corruption-api"  # fallback
+    for f in runtime:
+        if f == "--sandbox-testing":
+            sandbox_api_flag = "--sandbox-testing"
+            break
+        if f == "--sandbox-fuzzing":
+            sandbox_api_flag = "--sandbox-fuzzing"
+            break
+
     total += 1
     if family == "sandbox":
-        print(f"[5] Sandbox API exposta (family=sandbox)...", end=" ", flush=True)
-        # Testar com --expose-memory-corruption-api (NAO ativa crash filter)
-        # --sandbox-testing ativa crash filter que pode FATAL em ambientes sem suporte
-        r = subprocess.run([d8_path, "--expose-memory-corruption-api", "-e", "print(typeof Sandbox)"],
+        print(f"[5] Sandbox API exposta (family=sandbox, flag={sandbox_api_flag})...", end=" ", flush=True)
+        r = subprocess.run([d8_path, sandbox_api_flag, "-e", "print(typeof Sandbox)"],
                           capture_output=True, text=True, timeout=10)
         if "object" in r.stdout:
             print("PASSED")
@@ -364,7 +375,7 @@ def cmd_post(yaml_path: str, config_name: str, d8_path: str):
         # 6. MemoryView
         total += 1
         print(f"[6] Sandbox.MemoryView...", end=" ", flush=True)
-        r = subprocess.run([d8_path, "--expose-memory-corruption-api", "-e",
+        r = subprocess.run([d8_path, sandbox_api_flag, "-e",
                            "new DataView(new Sandbox.MemoryView(0,0x100)); print('MV_OK')"],
                           capture_output=True, text=True, timeout=10)
         if "MV_OK" in r.stdout:
@@ -377,7 +388,7 @@ def cmd_post(yaml_path: str, config_name: str, d8_path: str):
         # 7. getAddressOf + getSizeOf
         total += 1
         print(f"[7] addrof + getSizeOf...", end=" ", flush=True)
-        r = subprocess.run([d8_path, "--expose-memory-corruption-api", "-e",
+        r = subprocess.run([d8_path, sandbox_api_flag, "-e",
                            "let a=Sandbox.getAddressOf({}); let s=Sandbox.getSizeOf({}); print('AS_OK:'+typeof a+':'+s)"],
                           capture_output=True, text=True, timeout=10)
         if "AS_OK:bigint:" in r.stdout or "AS_OK:number:" in r.stdout:
@@ -508,14 +519,16 @@ def cmd_introspect(yaml_path: str, config_name: str, d8_path: str, build_dir: st
         report["sources"]["runtime_probe"] = {"error": "file not found"}
     else:
         runtime_flags = ["--allow-natives-syntax"]
-        if family == "sandbox":
-            runtime_flags.append("--sandbox-testing")
         if config.get("runtime_flags"):
             for f in config["runtime_flags"]:
                 if f not in runtime_flags and f.startswith("--"):
                     # Evitar flags que alteram comportamento (trace, print)
                     if "trace" not in f and "print" not in f:
                         runtime_flags.append(f)
+        # Garantir que sandbox family tem pelo menos uma flag de API
+        if family == "sandbox" and not any(f in runtime_flags for f in
+                ("--sandbox-testing", "--sandbox-fuzzing", "--expose-memory-corruption-api")):
+            runtime_flags.append("--sandbox-testing")
 
         r = subprocess.run([d8_path] + runtime_flags + [probe_js],
                           capture_output=True, text=True, timeout=15)
