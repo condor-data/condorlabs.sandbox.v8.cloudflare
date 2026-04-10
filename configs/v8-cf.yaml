@@ -6,8 +6,7 @@ base:
   v8_enable_sandbox: true
   target_cpu: x64
   treat_warnings_as_errors: false
-  cc_wrapper: env CCACHE_SLOPPINESS=time_macros,include_file_mtime CCACHE_COMPRESS=1
-    CCACHE_NOHASHDIR=1 ccache
+  cc_wrapper: env CCACHE_SLOPPINESS=time_macros,include_file_mtime CCACHE_COMPRESS=1 CCACHE_NOHASHDIR=1 ccache
   clang_use_chrome_plugins: false
   v8_enable_i18n_support: false
   concurrent_links: 1
@@ -35,8 +34,8 @@ configs:
     - --verify-bytecode-full
     last_build_status: OK
     last_build_version: 14.7.173.16
-    last_build_date: '2026-04-10T04:21:46Z'
-    d8_binary_size: 4.4M
+    last_build_date: '2026-04-10T19:21:33Z'
+    d8_binary_size: 65M
   fuzz:
     description: Fuzzing automatizado com crash filter (static, dcheck)
     family: sandbox
@@ -79,10 +78,10 @@ configs:
     - --fuzzer-gc-analysis
     - --stress-wasm-stack-switching
     - --stress-wasm-memory-moving
-    last_build_status: null
-    last_build_version: null
-    last_build_date: null
-    d8_binary_size: null
+    last_build_status: OK
+    last_build_version: 14.7.173.16
+    last_build_date: '2026-04-10T19:19:21Z'
+    d8_binary_size: 31M
   debug:
     description: Full debug para agentes de IA e GDB/LLDB step-through
     family: sandbox
@@ -117,10 +116,10 @@ configs:
     - --trace-wasm-stack-switching
     - --trace-elements-transitions
     - --trace-migration
-    last_build_status: null
-    last_build_version: null
-    last_build_date: null
-    d8_binary_size: null
+    last_build_status: OK
+    last_build_version: 14.7.173.16
+    last_build_date: '2026-04-10T19:14:12Z'
+    d8_binary_size: 105M
   release:
     description: Layout proximo de producao — validacao final antes do report
     family: sandbox
@@ -140,8 +139,8 @@ configs:
     - --expose-gc
     last_build_status: OK
     last_build_version: 14.7.173.16
-    last_build_date: '2026-04-10T19:05:47Z'
-    d8_binary_size: 65M
+    last_build_date: '2026-04-10T19:05:43Z'
+    d8_binary_size: 20M
     runtime_discovered:
       introspect_date: '2026-04-10T19:05:45Z'
       sanitizers_in_binary:
@@ -177,13 +176,12 @@ configs:
     - --stress-concurrent-allocation
     - --stress-flush-code
     - --gc-interval=50
-    last_build_status: null
-    last_build_version: null
-    last_build_date: null
-    d8_binary_size: null
+    last_build_status: OK
+    last_build_version: 14.7.173.16
+    last_build_date: '2026-04-10T19:25:29Z'
+    d8_binary_size: 110M
   tsan:
-    description: Thread Sanitizer — data races (DefaultJobState UAF, MemoryChunk flag
-      race)
+    description: Thread Sanitizer — data races (DefaultJobState UAF, MemoryChunk flag race)
     family: sanitizer
     gn_args:
       is_debug: false
@@ -214,13 +212,12 @@ configs:
     - --stress-flush-code
     - --stress-scavenge
     - --gc-interval=100
-    last_build_status: null
-    last_build_version: null
-    last_build_date: null
-    d8_binary_size: null
+    last_build_status: OK
+    last_build_version: 14.7.173.16
+    last_build_date: '2026-04-10T19:24:30Z'
+    d8_binary_size: 78M
   ubsan:
-    description: Undefined Behavior Sanitizer — integer overflow, type confusion,
-      null deref
+    description: Undefined Behavior Sanitizer — integer overflow, type confusion, null deref
     family: sanitizer
     gn_args:
       is_debug: false
@@ -248,10 +245,10 @@ configs:
     - --stress-scavenge
     - --stress-gc-during-compilation
     - --gc-interval=100
-    last_build_status: FAIL
-    last_build_version: ERROR:no-binary
-    last_build_date: '2026-04-10T18:02:44Z'
-    d8_binary_size: ERROR:no-binary
+    last_build_status: OK
+    last_build_version: 14.7.173.16
+    last_build_date: '2026-04-10T19:27:38Z'
+    d8_binary_size: 100M
   workerd-full:
     description: Workerd completo via Bazel (runtime real, ~45min, ~30GB disco)
     family: workerd
@@ -315,13 +312,12 @@ configs:
     - --stress-incremental-marking
     - --stress-scavenge
     - --gc-interval=100
-    last_build_status: FAIL
-    last_build_version: ERROR:no-binary
-    last_build_date: '2026-04-10T18:02:44Z'
-    d8_binary_size: ERROR:no-binary
+    last_build_status: OK
+    last_build_version: 14.7.173.16
+    last_build_date: '2026-04-10T19:22:49Z'
+    d8_binary_size: 60M
   jit-stress:
-    description: JIT stress testing — Maglev type confusion, Turbolev, concurrent
-      inlining
+    description: JIT stress testing — Maglev type confusion, Turbolev, concurrent inlining
     family: sandbox
     gn_args:
       is_debug: false
@@ -356,8 +352,8 @@ configs:
     - --stress-compaction
     - --stress-concurrent-allocation
     - --gc-interval=100
-    last_build_status: null
-    last_build_version: null
-    last_build_date: null
-    d8_binary_size: null
+    last_build_status: OK
+    last_build_version: 14.7.173.16
+    last_build_date: '2026-04-10T19:20:29Z'
+    d8_binary_size: 60M
 last_build: '2026-04-10T19:05:47Z'

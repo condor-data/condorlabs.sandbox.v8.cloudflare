@@ -3,12 +3,14 @@ v8_version: 14.7.173.16
 v8_source: cloudflare/workerd (pinned at 14.7.173.16)
 yaml_source: configs/v8-cf.yaml
 platform: linux-x86_64
+run_id: 24257000533
 
 config: fast
   family: sandbox
-  artifact_url: PENDING (builds in progress — run 24256773741)
+  artifact_url: https://github.com/condor-data/condorlabs.sandbox.v8.cloudflare/actions/runs/24257000533/artifacts/6378052349
   artifact_name: d8-fast-14.7.173.16
-  gh_download: gh run download 24256773741 -R condor-data/condorlabs.sandbox.v8.cloudflare -n d8-fast-14.7.173.16
+  artifact_size: 64.7MB
+  gh_download: gh run download 24257000533 -R condor-data/condorlabs.sandbox.v8.cloudflare -n d8-fast-14.7.173.16
   files: d8, libv8.so, libc++.so, libchrome_zlib.so, libthird_party_abseil-cpp_absl.so, libthird_party_partition_alloc_src_partition_alloc_allocator_base.so, libthird_party_partition_alloc_src_partition_alloc_allocator_core.so, libthird_party_partition_alloc_src_partition_alloc_allocator_shim.so, libv8_libbase.so, libv8_libplatform.so, snapshot_blob.bin, icudtl.dat
   gn_args: is_debug=False, dcheck_always_on=True, symbol_level=1, is_component_build=True, v8_enable_memory_corruption_api=True, is_asan=False
   run_command: LD_LIBRARY_PATH=. ./d8 --sandbox-testing --allow-natives-syntax --expose-gc --stress-ic --hole-fuzzing --deopt-every-n-times=100 --verify-bytecode-full <script.js>
@@ -19,9 +21,10 @@ config: fast
 
 config: fuzz
   family: sandbox
-  artifact_url: PENDING (builds in progress — run 24256773741)
+  artifact_url: https://github.com/condor-data/condorlabs.sandbox.v8.cloudflare/actions/runs/24257000533/artifacts/6378016915
   artifact_name: d8-fuzz-14.7.173.16
-  gh_download: gh run download 24256773741 -R condor-data/condorlabs.sandbox.v8.cloudflare -n d8-fuzz-14.7.173.16
+  artifact_size: 30.5MB
+  gh_download: gh run download 24257000533 -R condor-data/condorlabs.sandbox.v8.cloudflare -n d8-fuzz-14.7.173.16
   files: d8, icudtl.dat
   gn_args: is_debug=False, dcheck_always_on=True, symbol_level=0, is_component_build=False, v8_monolithic=True, v8_enable_memory_corruption_api=True, is_asan=False
   run_command: ./d8 --sandbox-fuzzing --allow-natives-syntax --expose-gc --hole-fuzzing --jit-fuzzing --verify-bytecode-full --stress-ic --stress-maglev --maglev-future --maglev-assert-types --verify-simplified-lowering --stress-concurrent-inlining --deopt-every-n-times=100 --stress-inline --stress-lazy-compilation=5 --stress-background-compile --stress-compaction --stress-compaction-random --stress-incremental-marking --stress-marking=50 --stress-scavenge --stress-concurrent-allocation --stress-flush-code --stress-gc-during-compilation --gc-interval=100 --fuzzer-gc-analysis --stress-wasm-stack-switching --stress-wasm-memory-moving <script.js>
@@ -32,9 +35,10 @@ config: fuzz
 
 config: debug
   family: sandbox
-  artifact_url: PENDING (builds in progress — run 24256773741)
+  artifact_url: https://github.com/condor-data/condorlabs.sandbox.v8.cloudflare/actions/runs/24257000533/artifacts/6377931084
   artifact_name: d8-debug-14.7.173.16
-  gh_download: gh run download 24256773741 -R condor-data/condorlabs.sandbox.v8.cloudflare -n d8-debug-14.7.173.16
+  artifact_size: 104.9MB
+  gh_download: gh run download 24257000533 -R condor-data/condorlabs.sandbox.v8.cloudflare -n d8-debug-14.7.173.16
   files: d8, snapshot_blob.bin, icudtl.dat
   gn_args: is_debug=True, dcheck_always_on=True, symbol_level=2, is_component_build=False, v8_enable_memory_corruption_api=True, is_asan=False
   run_command: ./d8 --sandbox-testing --allow-natives-syntax --expose-gc --verify-heap --verify-bytecode-full --verify-write-barriers --verify-simplified-lowering --trace-turbo --print-opt-code --print-bytecode --print-maglev-graph --trace-deopt --trace-deopt-verbose --print-ast --trace-wasm-stack-switching --trace-elements-transitions --trace-migration <script.js>
@@ -45,9 +49,10 @@ config: debug
 
 config: release
   family: sandbox
-  artifact_url: PENDING (builds in progress — run 24256773741)
+  artifact_url: https://github.com/condor-data/condorlabs.sandbox.v8.cloudflare/actions/runs/24257000533/artifacts/6377801653
   artifact_name: d8-release-14.7.173.16
-  gh_download: gh run download 24256773741 -R condor-data/condorlabs.sandbox.v8.cloudflare -n d8-release-14.7.173.16
+  artifact_size: 19.9MB
+  gh_download: gh run download 24257000533 -R condor-data/condorlabs.sandbox.v8.cloudflare -n d8-release-14.7.173.16
   files: d8, icudtl.dat
   gn_args: is_debug=False, dcheck_always_on=False, symbol_level=0, is_component_build=False, v8_monolithic=True, v8_enable_memory_corruption_api=True, is_asan=False
   run_command: ./d8 --sandbox-fuzzing --allow-natives-syntax --expose-gc <script.js>
@@ -58,9 +63,10 @@ config: release
 
 config: asan
   family: sanitizer
-  artifact_url: PENDING (builds in progress — run 24256773741)
+  artifact_url: https://github.com/condor-data/condorlabs.sandbox.v8.cloudflare/actions/runs/24257000533/artifacts/6378114823
   artifact_name: d8-asan-14.7.173.16
-  gh_download: gh run download 24256773741 -R condor-data/condorlabs.sandbox.v8.cloudflare -n d8-asan-14.7.173.16
+  artifact_size: 110.1MB
+  gh_download: gh run download 24257000533 -R condor-data/condorlabs.sandbox.v8.cloudflare -n d8-asan-14.7.173.16
   files: d8, snapshot_blob.bin, icudtl.dat
   gn_args: is_debug=False, dcheck_always_on=True, symbol_level=1, is_component_build=False, v8_enable_memory_corruption_api=False, is_asan=True
   run_command: ./d8 --allow-natives-syntax --expose-gc --verify-heap --verify-write-barriers --verify-bytecode-full --stress-ic --stress-maglev --deopt-every-n-times=100 --stress-compaction --stress-compaction-random --stress-incremental-marking --stress-marking=50 --stress-scavenge --stress-concurrent-allocation --stress-flush-code --gc-interval=50 <script.js>
@@ -71,9 +77,10 @@ config: asan
 
 config: tsan
   family: sanitizer
-  artifact_url: PENDING (builds in progress — run 24256773741)
+  artifact_url: https://github.com/condor-data/condorlabs.sandbox.v8.cloudflare/actions/runs/24257000533/artifacts/6378097054
   artifact_name: d8-tsan-14.7.173.16
-  gh_download: gh run download 24256773741 -R condor-data/condorlabs.sandbox.v8.cloudflare -n d8-tsan-14.7.173.16
+  artifact_size: 78.4MB
+  gh_download: gh run download 24257000533 -R condor-data/condorlabs.sandbox.v8.cloudflare -n d8-tsan-14.7.173.16
   files: d8, snapshot_blob.bin, icudtl.dat
   gn_args: is_debug=False, dcheck_always_on=True, symbol_level=1, is_component_build=False, v8_enable_memory_corruption_api=False, is_asan=False, is_tsan=True
   run_command: ./d8 --allow-natives-syntax --expose-gc --single-threaded-gc=false --concurrent-marking --stress-concurrent-allocation --stress-concurrent-inlining --stress-concurrent-inlining-attach-code --stress-background-compile --stress-gc-during-compilation --stress-ic --stress-maglev --jit-fuzzing --stress-compaction --stress-compaction-random --stress-incremental-marking --stress-flush-code --stress-scavenge --gc-interval=100 <script.js>
@@ -84,9 +91,10 @@ config: tsan
 
 config: ubsan
   family: sanitizer
-  artifact_url: PENDING (builds in progress — run 24256773741)
+  artifact_url: https://github.com/condor-data/condorlabs.sandbox.v8.cloudflare/actions/runs/24257000533/artifacts/6378147052
   artifact_name: d8-ubsan-14.7.173.16
-  gh_download: gh run download 24256773741 -R condor-data/condorlabs.sandbox.v8.cloudflare -n d8-ubsan-14.7.173.16
+  artifact_size: 99.5MB
+  gh_download: gh run download 24257000533 -R condor-data/condorlabs.sandbox.v8.cloudflare -n d8-ubsan-14.7.173.16
   files: d8, snapshot_blob.bin, icudtl.dat
   gn_args: is_debug=False, dcheck_always_on=True, symbol_level=1, is_component_build=False, v8_enable_memory_corruption_api=False, is_asan=False, is_ubsan=True
   run_command: ./d8 --allow-natives-syntax --expose-gc --verify-bytecode-full --stress-ic --stress-maglev --jit-fuzzing --stress-inline --stress-concurrent-inlining --deopt-every-n-times=100 --hole-fuzzing --stress-compaction --stress-scavenge --stress-gc-during-compilation --gc-interval=100 <script.js>
@@ -100,33 +108,31 @@ config: workerd-full
   build_mode: bazel
   bazel_target: //src/workerd/server:workerd
   bazel_args: 
-  artifact_url: PENDING (builds in progress)
-  artifact_name: workerd-workerd-full-14.7.173.16
-  note: Requires ~30GB disk, ~45min Bazel build. Not part of d8-standalone matrix.
+  artifact_url: NOT_BUILT (requires workerd-full dispatch)
+  note: Requires ~30GB disk, ~45min Bazel build. Separate dispatch with build_mode=workerd-full.
 
 config: workerd-asan
   family: workerd
   build_mode: bazel
   bazel_target: //src/workerd/server:workerd
   bazel_args: --config=asan
-  artifact_url: PENDING (builds in progress)
-  artifact_name: workerd-workerd-asan-14.7.173.16
-  note: Requires ~30GB disk, ~45min Bazel build. Not part of d8-standalone matrix.
+  artifact_url: NOT_BUILT (requires workerd-full dispatch)
+  note: Requires ~30GB disk, ~45min Bazel build. Separate dispatch with build_mode=workerd-full.
 
 config: workerd-tsan
   family: workerd
   build_mode: bazel
   bazel_target: //src/workerd/server:workerd
   bazel_args: --config=tsan
-  artifact_url: PENDING (builds in progress)
-  artifact_name: workerd-workerd-tsan-14.7.173.16
-  note: Requires ~30GB disk, ~45min Bazel build. Not part of d8-standalone matrix.
+  artifact_url: NOT_BUILT (requires workerd-full dispatch)
+  note: Requires ~30GB disk, ~45min Bazel build. Separate dispatch with build_mode=workerd-full.
 
 config: wasm-stress
   family: sandbox
-  artifact_url: PENDING (builds in progress — run 24256773741)
+  artifact_url: https://github.com/condor-data/condorlabs.sandbox.v8.cloudflare/actions/runs/24257000533/artifacts/6378070397
   artifact_name: d8-wasm-stress-14.7.173.16
-  gh_download: gh run download 24256773741 -R condor-data/condorlabs.sandbox.v8.cloudflare -n d8-wasm-stress-14.7.173.16
+  artifact_size: 60.4MB
+  gh_download: gh run download 24257000533 -R condor-data/condorlabs.sandbox.v8.cloudflare -n d8-wasm-stress-14.7.173.16
   files: d8, snapshot_blob.bin, icudtl.dat
   gn_args: is_debug=False, dcheck_always_on=True, symbol_level=1, is_component_build=False, v8_enable_memory_corruption_api=True, is_asan=False
   run_command: ./d8 --sandbox-fuzzing --allow-natives-syntax --expose-gc --hole-fuzzing --jit-fuzzing --verify-bytecode-full --experimental-wasm-wasmfx --experimental-wasm-growable-stacks --wasm-staging --wasm-deopt --wasm-lazy-validation --stress-wasm-stack-switching --stress-wasm-memory-moving --stress-wasm-code-gc --stress-compaction --stress-incremental-marking --stress-scavenge --gc-interval=100 <script.js>
@@ -137,9 +143,10 @@ config: wasm-stress
 
 config: jit-stress
   family: sandbox
-  artifact_url: PENDING (builds in progress — run 24256773741)
+  artifact_url: https://github.com/condor-data/condorlabs.sandbox.v8.cloudflare/actions/runs/24257000533/artifacts/6378034718
   artifact_name: d8-jit-stress-14.7.173.16
-  gh_download: gh run download 24256773741 -R condor-data/condorlabs.sandbox.v8.cloudflare -n d8-jit-stress-14.7.173.16
+  artifact_size: 60.4MB
+  gh_download: gh run download 24257000533 -R condor-data/condorlabs.sandbox.v8.cloudflare -n d8-jit-stress-14.7.173.16
   files: d8, snapshot_blob.bin, icudtl.dat
   gn_args: is_debug=False, dcheck_always_on=True, symbol_level=1, is_component_build=False, v8_enable_memory_corruption_api=True, is_asan=False
   run_command: ./d8 --sandbox-fuzzing --allow-natives-syntax --expose-gc --hole-fuzzing --verify-bytecode-full --stress-ic --stress-maglev --maglev-future --maglev-assert-types --turbolev --turbolev-future --verify-simplified-lowering --jit-fuzzing --stress-concurrent-inlining --stress-concurrent-inlining-attach-code --stress-inline --deopt-every-n-times=100 --stress-lazy-compilation=5 --stress-background-compile --stress-gc-during-compilation --stress-flush-code --stress-compaction --stress-concurrent-allocation --gc-interval=100 <script.js>
