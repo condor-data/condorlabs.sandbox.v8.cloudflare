@@ -137,6 +137,7 @@ configs:
       symbol_level: 1
       v8_enable_backtrace: true
       v8_enable_object_print: true
+      is_asan: false
     runtime_flags:
     - --allow-natives-syntax
     - --expose-gc
@@ -158,6 +159,7 @@ configs:
       symbol_level: 1
       v8_enable_backtrace: true
       v8_enable_object_print: true
+      is_asan: false
     runtime_flags:
     - --allow-natives-syntax
     - --expose-gc
