@@ -99,10 +99,23 @@ runs:
 
         git config user.name "condor-data-bot"
         git config user.email "bot@condor-data.github.io"
-        git add ${{ inputs.yaml_file }}
-        git diff --cached --stat
-        git commit -m "build-status: ${CONFIG} = ${{ inputs.build_result }} (V8 ${VERSION})" || true
-        git push || echo "::warning::Push failed (concurrent?)"
+        git add ${{ inputs.yaml_file }} configs/reference/ || true
+
+        if git diff --cached --quiet; then
+          echo "Nenhuma mudanca para commitar"
+        else
+          git diff --cached --stat
+          git commit -m "build-status: ${CONFIG} = ${{ inputs.build_result }} (V8 ${VERSION})"
+
+          # Em matrix paralelo, outros jobs podem ter pushado antes.
+          # Pull + rebase antes de push. Se falhar, o status fica no artifact.
+          for attempt in 1 2 3; do
+            git pull --rebase origin main 2>&1 && git push origin main 2>&1 && break || {
+              echo "::warning::Push tentativa $attempt falhou (concurrent push). Retrying..."
+              sleep $((attempt * 2))
+            }
+          done
+        fi
 
     - name: "[POST] Job summary"
       if: always()
