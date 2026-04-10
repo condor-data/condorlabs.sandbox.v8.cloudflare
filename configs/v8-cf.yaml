@@ -31,10 +31,10 @@ configs:
     - --expose-gc
     - --expose-memory-corruption-api
     - --verify-bytecode-full
-    last_build_status: null
-    last_build_version: null
-    last_build_date: null
-    d8_binary_size: null
+    last_build_status: FAIL
+    last_build_version: ERROR:no-binary
+    last_build_date: '2026-04-10T02:40:36Z'
+    d8_binary_size: ERROR:no-binary
   fuzz:
     description: Fuzzing automatizado com crash filter (static, dcheck)
     family: sandbox
@@ -272,4 +272,4 @@ configs:
     last_build_version: null
     last_build_date: null
     d8_binary_size: null
-last_build: '2026-04-09T23:42:53Z'
+last_build: '2026-04-10T02:40:36Z'
