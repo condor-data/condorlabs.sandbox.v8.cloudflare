@@ -98,20 +98,11 @@ runs:
       uses: actions/cache@v5
       with:
         path: depot_tools
-        key: depot-tools-v2-no-cipd
+        key: depot-tools-v3-bootstrapped
 
     - name: Setup depot_tools
       shell: bash
-      env:
-        # Usar Python do sistema (já instalado no runner) em vez de baixar via CIPD
-        # CIPD retorna 503 frequentemente e falha o bootstrap
-        DEPOT_TOOLS_BOOTSTRAP_PYTHON3: "0"
-        VPYTHON_BYPASS: "manually managed python not supported by chrome operations"
       run: |
-        # Exportar para steps seguintes
-        echo "DEPOT_TOOLS_BOOTSTRAP_PYTHON3=0" >> $GITHUB_ENV
-        echo "VPYTHON_BYPASS=manually managed python not supported by chrome operations" >> $GITHUB_ENV
-
         if [ ! -d depot_tools ] || [ ! -f depot_tools/gclient ]; then
           rm -rf depot_tools
           git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git || {
@@ -120,6 +111,32 @@ runs:
           }
         fi
         echo "$PWD/depot_tools" >> $GITHUB_PATH
+
+        # Bootstrap depot_tools — cria python3_bin_reldir.txt que gn precisa
+        # Usar VPYTHON_BYPASS para evitar vpython3 (que precisa de CIPD)
+        export VPYTHON_BYPASS="manually managed python not supported by chrome operations"
+        echo "VPYTHON_BYPASS=manually managed python not supported by chrome operations" >> $GITHUB_ENV
+
+        # Rodar update_depot_tools para inicializar
+        cd depot_tools
+        ./update_depot_tools 2>&1 || {
+          echo "::warning::update_depot_tools falhou. Tentando bootstrap manual..."
+          # Criar python3_bin_reldir.txt manualmente apontando para o sistema
+          PYTHON3_PATH=$(which python3)
+          PYTHON3_DIR=$(dirname "$PYTHON3_PATH")
+          echo "$PYTHON3_DIR" > python3_bin_reldir.txt
+          echo "python3_bin_reldir.txt criado: $(cat python3_bin_reldir.txt)"
+        }
+        cd ..
+
+        # Verificar que gn funciona
+        gn --version || {
+          echo "::error::gn NAO FUNCIONA apos bootstrap!"
+          echo "::error::Conteudo de depot_tools/python3_bin_reldir.txt:"
+          cat depot_tools/python3_bin_reldir.txt 2>&1 || echo "(arquivo nao existe)"
+          exit 1
+        }
+        echo "depot_tools OK: gn $(gn --version)"
 
     - name: Cache ccache
       uses: actions/cache@v5
