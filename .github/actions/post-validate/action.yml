@@ -18,39 +18,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: "[POST] Validate d8 against YAML config"
-      if: inputs.build_result == 'success'
-      shell: bash
-      run: |
-        echo "::group::Post-validate: ${{ inputs.config }}"
-        set -euo pipefail
-        CONFIG="${{ inputs.config }}"
-        D8="./v8-build/v8/out/d8-${CONFIG}/d8"
-
-        python3 configs/verify-build.py post ${{ inputs.yaml_file }} "$CONFIG" "$D8" || {
-          echo "::endgroup::"
-          echo "::error::POST-BUILD VALIDATION FAILED!"
-          exit 1
-        }
-        echo "::endgroup::"
-
-    - name: "[POST] Introspect binary (gn desc + nm + runtime probe)"
-      if: inputs.build_result == 'success'
-      shell: bash
-      run: |
-        echo "::group::Introspect: ${{ inputs.config }}"
-        set -euo pipefail
-        CONFIG="${{ inputs.config }}"
-        D8="./v8-build/v8/out/d8-${CONFIG}/d8"
-        BUILD_DIR="v8-build/v8/out/d8-${CONFIG}"
-
-        python3 configs/verify-build.py introspect ${{ inputs.yaml_file }} "$CONFIG" "$D8" "$BUILD_DIR" || {
-          echo "::endgroup::"
-          echo "::error::INTROSPECT FAILED!"
-          exit 1
-        }
-        echo "::endgroup::"
-
+    # Upload PRIMEIRO — garante que o artifact é salvo mesmo se validação falhar
     - name: "[POST] Upload d8 artifact"
       if: inputs.build_result == 'success'
       uses: actions/upload-artifact@v7
@@ -65,7 +33,41 @@ runs:
         if-no-files-found: error
         compression-level: 6
 
+    # Validação e introspect DEPOIS do upload (artifact já está salvo)
+    - name: "[POST] Validate d8 against YAML config"
+      if: inputs.build_result == 'success'
+      shell: bash
+      run: |
+        echo "::group::Post-validate: ${{ inputs.config }}"
+        set -euo pipefail
+        CONFIG="${{ inputs.config }}"
+        D8="./v8-build/v8/out/d8-${CONFIG}/d8"
+
+        python3 configs/verify-build.py post ${{ inputs.yaml_file }} "$CONFIG" "$D8" || {
+          echo "::endgroup::"
+          echo "::error::POST-BUILD VALIDATION FAILED!"
+          echo "::error::O artifact d8 JA FOI SALVO — baixe e investigue manualmente."
+          exit 1
+        }
+        echo "::endgroup::"
+
+    - name: "[POST] Introspect binary (gn desc + nm + runtime probe)"
+      if: inputs.build_result == 'success'
+      shell: bash
+      run: |
+        echo "::group::Introspect: ${{ inputs.config }}"
+        CONFIG="${{ inputs.config }}"
+        D8="./v8-build/v8/out/d8-${CONFIG}/d8"
+        BUILD_DIR="v8-build/v8/out/d8-${CONFIG}"
+
+        python3 configs/verify-build.py introspect ${{ inputs.yaml_file }} "$CONFIG" "$D8" "$BUILD_DIR" || {
+          echo "::endgroup::"
+          echo "::error::INTROSPECT FAILED — mas artifact ja salvo."
+        }
+        echo "::endgroup::"
+
     - name: "[POST] Upload introspection report"
+      if: always()
       uses: actions/upload-artifact@v7
       with:
         name: introspect-${{ inputs.config }}-${{ inputs.v8_version }}

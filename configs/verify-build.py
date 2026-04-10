@@ -333,17 +333,24 @@ def cmd_post(yaml_path: str, config_name: str, d8_path: str):
     total += 1
     if family == "sandbox":
         print(f"[5] Sandbox API exposta (family=sandbox)...", end=" ", flush=True)
-        r = subprocess.run([d8_path, "--sandbox-testing", "-e", "print(typeof Sandbox)"],
+        # Testar com --expose-memory-corruption-api (NAO ativa crash filter)
+        # --sandbox-testing ativa crash filter que pode FATAL em ambientes sem suporte
+        r = subprocess.run([d8_path, "--expose-memory-corruption-api", "-e", "print(typeof Sandbox)"],
                           capture_output=True, text=True, timeout=10)
         if "object" in r.stdout:
             print("PASSED")
             passed += 1
+        elif "Contradictory" in r.stderr or "readonly" in r.stderr:
+            print(f"FAILED (flag readonly — v8_enable_memory_corruption_api nao compilado!)")
+            errors.append("expose_memory_corruption_api readonly — build SEM memory_corruption_api!")
         else:
             print(f"FAILED (typeof Sandbox = '{r.stdout.strip()}')")
+            if r.stderr.strip():
+                print(f"    stderr: {r.stderr.strip()[:200]}")
             errors.append("Sandbox API nao exposta em build sandbox!")
     else:
         print(f"[5] Sandbox API AUSENTE (family=sanitizer)...", end=" ", flush=True)
-        r = subprocess.run([d8_path, "--sandbox-testing", "-e", "print(typeof Sandbox)"],
+        r = subprocess.run([d8_path, "--expose-memory-corruption-api", "-e", "print(typeof Sandbox)"],
                           capture_output=True, text=True, timeout=10)
         if "object" not in r.stdout:
             print("PASSED (ausente, correto)")
@@ -357,7 +364,7 @@ def cmd_post(yaml_path: str, config_name: str, d8_path: str):
         # 6. MemoryView
         total += 1
         print(f"[6] Sandbox.MemoryView...", end=" ", flush=True)
-        r = subprocess.run([d8_path, "--sandbox-testing", "-e",
+        r = subprocess.run([d8_path, "--expose-memory-corruption-api", "-e",
                            "new DataView(new Sandbox.MemoryView(0,0x100)); print('MV_OK')"],
                           capture_output=True, text=True, timeout=10)
         if "MV_OK" in r.stdout:
@@ -370,7 +377,7 @@ def cmd_post(yaml_path: str, config_name: str, d8_path: str):
         # 7. getAddressOf + getSizeOf
         total += 1
         print(f"[7] addrof + getSizeOf...", end=" ", flush=True)
-        r = subprocess.run([d8_path, "--sandbox-testing", "-e",
+        r = subprocess.run([d8_path, "--expose-memory-corruption-api", "-e",
                            "let a=Sandbox.getAddressOf({}); let s=Sandbox.getSizeOf({}); print('AS_OK:'+typeof a+':'+s)"],
                           capture_output=True, text=True, timeout=10)
         if "AS_OK:bigint:" in r.stdout:
