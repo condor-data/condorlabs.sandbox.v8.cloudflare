@@ -57,11 +57,15 @@ configs:
     - --verify-bytecode-full
     - --stress-ic
     - --stress-maglev
+    - --maglev-future
+    - --maglev-assert-types
+    - --verify-simplified-lowering
     - --stress-concurrent-inlining
     - --deopt-every-n-times=100
     - --stress-inline
     - --stress-lazy-compilation=5
     - --stress-background-compile
+    - --stress-compaction
     - --stress-compaction-random
     - --stress-incremental-marking
     - --stress-marking=50
@@ -156,6 +160,7 @@ configs:
     - --stress-ic
     - --stress-maglev
     - --deopt-every-n-times=100
+    - --stress-compaction
     - --stress-compaction-random
     - --stress-incremental-marking
     - --stress-marking=50
@@ -194,7 +199,9 @@ configs:
     - --stress-maglev
     - --jit-fuzzing
     - --stress-compaction
+    - --stress-compaction-random
     - --stress-incremental-marking
+    - --stress-flush-code
     - --stress-scavenge
     - --gc-interval=100
     last_build_status: null
@@ -335,6 +342,7 @@ configs:
     - --stress-gc-during-compilation
     - --stress-flush-code
     - --stress-compaction
+    - --stress-concurrent-allocation
     - --gc-interval=100
     last_build_status: null
     last_build_version: null
