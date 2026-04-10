@@ -195,9 +195,55 @@ runs:
         }]
         GCLIENT
 
+        # Pre-flight: verificar se servicos Google estao acessiveis
+        echo "Pre-flight: verificando servicos Google..."
+        CIPD_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
+          "https://chrome-infra-packages.appspot.com/client?platform=linux-amd64" 2>&1 || echo "000")
+        GCS_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
+          "https://commondatastorage.googleapis.com/" 2>&1 || echo "000")
+
+        if [ "$CIPD_STATUS" != "200" ] || [ "$GCS_STATUS" != "200" ] && [ "$GCS_STATUS" != "400" ]; then
+          echo "::error::!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+          echo "::error::SERVICOS GOOGLE INACESSIVEIS!"
+          echo "::error::"
+          echo "::error::CIPD (chrome-infra-packages.appspot.com): HTTP ${CIPD_STATUS}"
+          echo "::error::GCS (commondatastorage.googleapis.com): HTTP ${GCS_STATUS}"
+          echo "::error::"
+          echo "::error::gclient sync PRECISA destes servicos para baixar:"
+          echo "::error::  - clang (compilador C++)"
+          echo "::error::  - build tools (gn, ninja wrappers)"
+          echo "::error::  - test262, ICU, e outras dependencias"
+          echo "::error::"
+          echo "::error::POSSIVEIS CAUSAS:"
+          echo "::error::  1. Google App Engine outage (verificar https://status.cloud.google.com)"
+          echo "::error::  2. Rate limiting por IP do GitHub Actions runner"
+          echo "::error::  3. Bloqueio geografico"
+          echo "::error::"
+          echo "::error::SOLUCOES:"
+          echo "::error::  - Esperar e re-disparar o build"
+          echo "::error::  - Verificar status em https://status.cloud.google.com"
+          echo "::error::  - Se persistir: investigar se GitHub Actions IPs estao bloqueados"
+          echo "::error::!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+          exit 1
+        fi
+        echo "CIPD: HTTP ${CIPD_STATUS} | GCS: HTTP ${GCS_STATUS} — OK"
+
         echo "gclient sync (deps do V8)..."
-        gclient sync --no-history --shallow -D 2>&1 | tail -10 || {
-          echo "::error::gclient sync FALHOU! Deps podem estar faltando."
+        gclient sync --no-history --shallow -D 2>&1 | tail -20 || {
+          echo "::error::!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+          echo "::error::gclient sync FALHOU!"
+          echo "::error::"
+          echo "::error::Isso significa que dependencias do V8 nao foram baixadas."
+          echo "::error::O build NAO vai funcionar sem elas."
+          echo "::error::"
+          echo "::error::Possiveis causas:"
+          echo "::error::  - CIPD ou Google Storage retornaram erro durante download"
+          echo "::error::  - .gclient mal configurado"
+          echo "::error::  - Disco cheio (verificar com df -h)"
+          echo "::error::"
+          echo "::error::Disco atual:"
+          df -h . 2>&1 | tail -1
+          echo "::error::!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
           exit 1
         }
 

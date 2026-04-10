@@ -208,7 +208,8 @@ jobs:
           echo "=== PoC JS syntax check ==="
           JS_OK=0
           JS_TOTAL=0
-          for js in configs/pocs/*.js configs/runtime-probe.js configs/harness/*.js 2>/dev/null; do
+          JS_FILES=$(find configs/pocs -name '*.js' 2>/dev/null; echo configs/runtime-probe.js)
+          for js in $JS_FILES; do
             [ -f "$js" ] || continue
             JS_TOTAL=$((JS_TOTAL + 1))
             if node --check "$js" 2>/dev/null; then
