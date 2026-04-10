@@ -111,7 +111,8 @@ jobs:
                   capture_output=True, text=True
               )
               if result.returncode != 0:
-                  print(f"  {name}: FAIL — {result.stderr.strip()}")
+                  errmsg = result.stderr.strip() or result.stdout.strip().split('\n')[-1]
+                  print(f"  {name}: FAIL — {errmsg}")
                   failed = True
               else:
                   print(f"  {name}: OK")
@@ -170,7 +171,8 @@ jobs:
                   capture_output=True, text=True
               )
               if result.returncode != 0:
-                  print(f"  {name}: FAIL — {result.stderr.strip()}")
+                  errmsg = result.stderr.strip() or result.stdout.strip().split('\n')[-1]
+                  print(f"  {name}: FAIL — {errmsg}")
                   failed = True
               else:
                   print(f"  {name}: OK")
