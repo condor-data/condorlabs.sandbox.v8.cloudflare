@@ -166,13 +166,22 @@ jobs:
           fi
           file "$WORKERD"
           du -sh "$WORKERD"
-          "$WORKERD" --version 2>&1 || echo "::warning::--version nao suportado"
+          WORKERD_VERSION=$("$WORKERD" --version 2>&1) || {
+            echo "::error::workerd --version FALHOU! Binario pode estar corrompido."
+            WORKERD_VERSION="ERROR:version-failed"
+          }
+          echo "Workerd version: $WORKERD_VERSION"
 
-          pip3 -q install pyyaml
+          WORKERD_SIZE=$(du -sh "$WORKERD" | cut -f1)
+
+          pip3 install --break-system-packages pyyaml 2>/dev/null || pip3 install pyyaml || {
+            echo "::error::pip3 install pyyaml FALHOU!"
+            exit 1
+          }
           python3 configs/verify-build.py update-status configs/v8-cf.yaml workerd-full \
             "${{ steps.build.outcome }}" \
             "${{ needs.prepare.outputs.v8_version }}" \
-            "$(du -sh "$WORKERD" 2>/dev/null | cut -f1)"
+            "$WORKERD_SIZE"
 
           git config user.name "condor-data-bot"
           git config user.email "bot@condor-data.github.io"
