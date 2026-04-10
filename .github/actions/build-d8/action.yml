@@ -17,6 +17,18 @@ outputs:
 runs:
   using: "composite"
   steps:
+    - name: "[BUILD] Resources before build"
+      shell: bash
+      run: |
+        echo "::group::Resources (pre-build)"
+        echo "=== Memory ==="
+        free -h
+        echo "=== Disk ==="
+        df -h .
+        echo "=== CPUs ==="
+        nproc
+        echo "::endgroup::"
+
     - name: "[BUILD] gn gen + autoninja"
       id: build
       shell: bash
@@ -55,4 +67,17 @@ runs:
         echo "::group::Build stats"
         echo "d8 binary: $(du -sh "out/d8-${CONFIG}/d8" | cut -f1)"
         ccache -s
+        echo "::endgroup::"
+
+    - name: "[BUILD] Resources after build"
+      if: always()
+      shell: bash
+      run: |
+        echo "::group::Resources (post-build)"
+        echo "=== Memory ==="
+        free -h
+        echo "=== Disk ==="
+        df -h .
+        echo "=== Swap usage ==="
+        swapon --show
         echo "::endgroup::"
