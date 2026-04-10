@@ -119,13 +119,22 @@ runs:
         export VPYTHON_BYPASS="manually managed python not supported by chrome operations"
         echo "VPYTHON_BYPASS=manually managed python not supported by chrome operations" >> $GITHUB_ENV
 
-        # Forçar python3_bin_reldir.txt para o Python do sistema
-        # O update_depot_tools tenta baixar Python via CIPD e pode falhar
-        # Melhor garantir que aponta para o python3 do runner
-        SYSTEM_PYTHON3=$(which python3)
-        SYSTEM_PYTHON3_DIR=$(dirname "$SYSTEM_PYTHON3")
-        echo "$SYSTEM_PYTHON3_DIR" > depot_tools/python3_bin_reldir.txt
-        echo "python3_bin_reldir.txt -> $SYSTEM_PYTHON3_DIR (sistema)"
+        # python3_bin_reldir.txt é um path RELATIVO ao depot_tools/python-bin/../
+        # O wrapper faz: exec depot_tools/python-bin/../$RELDIR/python3
+        # Então para /usr/bin/python3, o reldir precisa resolver para /usr/bin
+        # desde depot_tools/. Ou seja: caminho absoluto com ../ prefixado.
+        #
+        # Alternativa mais robusta: criar symlink direto
+        mkdir -p depot_tools/python-bin-system
+        ln -sf "$(which python3)" depot_tools/python-bin-system/python3
+        echo "python-bin-system" > depot_tools/python3_bin_reldir.txt
+        echo "python3_bin_reldir.txt -> python-bin-system (symlink para $(which python3))"
+        # Verificar que o symlink funciona
+        depot_tools/python-bin-system/python3 --version || {
+          echo "::error::Symlink python3 NAO FUNCIONA!"
+          ls -la depot_tools/python-bin-system/
+          exit 1
+        }
 
         # Verificar que gn funciona
         depot_tools/gn --version || {
