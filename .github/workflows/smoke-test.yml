@@ -1,20 +1,9 @@
 ###############################################################################
-# Smoke Test — Valida todo o pipeline sem compilar nada
+# Smoke Test — Valida pipeline inteira lendo do configs/manifest.yaml
 #
-# Testa:
-#   1. YAML parse OK
-#   2. Todos os 7 configs existem e validam
-#   3. yaml2gn.py gera args.gn para cada config
-#   4. verify-build.py pre-validate funciona
-#   5. Composite actions parseiam (YAML valido)
-#   6. PoC JS files tem sintaxe valida (node --check)
-#
-# Sem fetch V8, sem build, sem operacoes pesadas.
-# Target: <2 minutos.
-#
-# Trigger: APENAS manual
-# Secrets: ZERO
-# Custo: ~$0
+# ZERO hardcoded. O manifesto define configs, scripts, PoCs, referências.
+# Se algo novo for adicionado ao projeto, adicione ao manifesto.
+# Se faltar no manifesto, o smoke test NÃO valida — e isso é um ERRO.
 ###############################################################################
 name: "Smoke test (pipeline validation)"
 
@@ -31,217 +20,299 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Install PyYAML
-        run: pip3 install pyyaml
+        run: pip3 install --break-system-packages pyyaml 2>/dev/null || pip3 install pyyaml
 
       # ================================================================
-      # TEST 1: YAML parse
+      # TODOS OS TESTES — lê do configs/manifest.yaml
       # ================================================================
-      - name: "[1/6] YAML parse"
+      - name: "Run all smoke tests (manifest-driven)"
         run: |
           set -euo pipefail
-          echo "=== Parsing all YAML configs ==="
-          PASS=0
-          for f in configs/*.yaml; do
-            python3 -c "
-          import yaml, sys
-          with open('$f') as fh:
-              cfg = yaml.safe_load(fh)
-          configs = cfg.get('configs', {})
-          print(f'  $f: OK ({len(configs)} configs)')
-          " || { echo "::error::YAML PARSE FAILED: $f"; exit 1; }
-            PASS=$((PASS + 1))
-          done
-          echo "::notice::${PASS} YAML file(s) parsed OK"
 
-      # ================================================================
-      # TEST 2: All 7 configs exist and validate
-      # ================================================================
-      - name: "[2/6] Required configs exist + integrity"
-        run: |
-          set -euo pipefail
-          REQUIRED="fast fuzz debug release asan tsan ubsan"
           python3 << 'PYEOF'
-          import yaml, sys
+          import yaml, subprocess, sys, os, re, stat
 
-          REQUIRED = {"fast", "fuzz", "debug", "release", "asan", "tsan", "ubsan"}
+          # ============================================================
+          # CARREGAR MANIFESTO
+          # ============================================================
+          MANIFEST_FILE = "configs/manifest.yaml"
+          if not os.path.exists(MANIFEST_FILE):
+              print(f"::error::{MANIFEST_FILE} NAO ENCONTRADO!")
+              print(f"::error::O manifesto define o que o smoke test valida.")
+              print(f"::error::Sem ele, nada eh validado — isso eh um ERRO CRITICO.")
+              sys.exit(1)
+
+          with open(MANIFEST_FILE) as f:
+              manifest = yaml.safe_load(f)
+
           errors = []
+          warnings = []
+          tests_passed = 0
+          tests_total = 0
 
-          with open("configs/v8-cf.yaml") as f:
-              cfg = yaml.safe_load(f)
-          configs = set(cfg.get("configs", {}).keys())
+          def test(name, fn):
+              global tests_passed, tests_total
+              tests_total += 1
+              print(f"\n{'='*60}")
+              print(f"  TEST {tests_total}: {name}")
+              print(f"{'='*60}")
+              try:
+                  fn()
+                  tests_passed += 1
+                  print(f"  RESULT: PASS")
+              except SystemExit:
+                  print(f"  RESULT: FAIL")
+                  raise
+              except Exception as e:
+                  errors.append(f"Test '{name}': {e}")
+                  print(f"  RESULT: FAIL — {e}")
 
-          missing = REQUIRED - configs
-          if missing:
-              errors.append(f"Missing configs: {missing}")
+          # ============================================================
+          # TEST 1: YAML parse
+          # ============================================================
+          def test_yaml_parse():
+              for f in ["configs/v8-cf.yaml"]:
+                  if not os.path.exists(f):
+                      errors.append(f"{f} NAO EXISTE!")
+                      return
+                  with open(f) as fh:
+                      cfg = yaml.safe_load(fh)
+                  print(f"  {f}: OK ({len(cfg.get('configs', {}))} configs)")
 
-          # Check each config has required fields
-          for name, config in cfg.get("configs", {}).items():
-              if "family" not in config:
-                  errors.append(f"{name}: missing 'family' field")
-              if "gn_args" not in config:
-                  errors.append(f"{name}: missing 'gn_args' field")
-              family = config.get("family", "")
-              if family not in ("sandbox", "sanitizer"):
-                  errors.append(f"{name}: invalid family '{family}'")
+          test("YAML parse", test_yaml_parse)
 
+          # ============================================================
+          # TEST 2: Required configs exist
+          # ============================================================
+          def test_required_configs():
+              with open("configs/v8-cf.yaml") as f:
+                  cfg = yaml.safe_load(f)
+              configs = set(cfg.get("configs", {}).keys())
+              required = set(manifest.get("required_configs", []))
+
+              missing = required - configs
+              if missing:
+                  for m in missing:
+                      errors.append(f"Config OBRIGATORIO ausente: {m}")
+                      print(f"  ::error::Config '{m}' FALTA no YAML mas esta no manifesto!")
+                  raise SystemExit(1)
+
+              extra = configs - required
+              if extra:
+                  for e in extra:
+                      warnings.append(f"Config '{e}' existe no YAML mas NAO no manifesto")
+                      print(f"  WARN: Config '{e}' no YAML mas nao no manifesto. Adicione ao manifesto!")
+
+              print(f"  {len(required)} required configs presentes")
+
+          test("Required configs", test_required_configs)
+
+          # ============================================================
+          # TEST 3: Config structure
+          # ============================================================
+          def test_config_structure():
+              with open("configs/v8-cf.yaml") as f:
+                  cfg = yaml.safe_load(f)
+              valid_families = set(manifest.get("valid_families", []))
+              req_fields = manifest.get("required_fields", [])
+              req_gn = manifest.get("required_fields_gn", [])
+
+              for name, config in cfg.get("configs", {}).items():
+                  for field in req_fields:
+                      if field not in config:
+                          errors.append(f"{name}: campo OBRIGATORIO '{field}' ausente")
+                          print(f"  ::error::{name}: MISSING '{field}'")
+
+                  family = config.get("family", "")
+                  if family not in valid_families:
+                      errors.append(f"{name}: family '{family}' INVALIDA (valid: {valid_families})")
+                      print(f"  ::error::{name}: INVALID family '{family}'")
+
+                  if family in ("sandbox", "sanitizer"):
+                      for field in req_gn:
+                          if field not in config:
+                              errors.append(f"{name}: campo '{field}' obrigatorio para family={family}")
+
+                  print(f"  {name}: OK (family={family})")
+
+              if errors:
+                  raise SystemExit(1)
+
+          test("Config structure", test_config_structure)
+
+          # ============================================================
+          # TEST 4: yaml2gn.py validate + generate
+          # ============================================================
+          def test_yaml2gn():
+              with open("configs/v8-cf.yaml") as f:
+                  cfg = yaml.safe_load(f)
+              for name, config in cfg.get("configs", {}).items():
+                  if config.get("family") == "workerd":
+                      print(f"  {name}: SKIP (workerd)")
+                      continue
+                  # Validate
+                  r = subprocess.run(
+                      ["python3", "configs/yaml2gn.py", "configs/v8-cf.yaml", name, "--validate"],
+                      capture_output=True, text=True)
+                  if r.returncode != 0:
+                      err = r.stderr.strip() or r.stdout.strip().split('\n')[-1]
+                      errors.append(f"yaml2gn validate FAILED: {name} — {err}")
+                      print(f"  {name}: VALIDATE FAIL — {err}")
+                      raise SystemExit(1)
+                  # Generate
+                  r = subprocess.run(
+                      ["python3", "configs/yaml2gn.py", "configs/v8-cf.yaml", name],
+                      capture_output=True, text=True)
+                  if r.returncode != 0:
+                      errors.append(f"yaml2gn generate FAILED: {name}")
+                      raise SystemExit(1)
+                  lines = [l for l in r.stdout.split("\n") if " = " in l]
+                  if not lines:
+                      errors.append(f"yaml2gn generated EMPTY args.gn for {name}")
+                      raise SystemExit(1)
+                  print(f"  {name}: OK ({len(lines)} args)")
+
+          test("yaml2gn.py validate + generate", test_yaml2gn)
+
+          # ============================================================
+          # TEST 5: verify-build.py pre-validate
+          # ============================================================
+          def test_verify_build():
+              with open("configs/v8-cf.yaml") as f:
+                  cfg = yaml.safe_load(f)
+              for name, config in cfg.get("configs", {}).items():
+                  if config.get("family") == "workerd":
+                      continue
+                  r = subprocess.run(
+                      ["python3", "configs/verify-build.py", "pre", "configs/v8-cf.yaml", name],
+                      capture_output=True, text=True)
+                  if r.returncode != 0:
+                      err = r.stderr.strip() or r.stdout.strip().split('\n')[-1]
+                      errors.append(f"verify-build pre FAILED: {name} — {err}")
+                      print(f"  {name}: FAIL — {err}")
+                      raise SystemExit(1)
+                  print(f"  {name}: OK")
+
+          test("verify-build.py pre-validate", test_verify_build)
+
+          # ============================================================
+          # TEST 6: Runtime flags vs d8 --help reference
+          # ============================================================
+          def test_runtime_flags():
+              ref_file = "configs/reference/v8-runtime-flags-d8-help.txt"
+              if not os.path.exists(ref_file):
+                  errors.append(f"{ref_file} NAO EXISTE! Rode discover-flags ou jsvu + d8 --help")
+                  raise SystemExit(1)
+
+              with open(ref_file) as f:
+                  help_text = f.read()
+              help_flags = set()
+              for line in help_text.split("\n"):
+                  m = re.match(r'  --(\S+)', line)
+                  if m:
+                      help_flags.add(m.group(1))
+
+              if not help_flags:
+                  errors.append(f"{ref_file} nao contem flags!")
+                  raise SystemExit(1)
+
+              with open("configs/v8-cf.yaml") as f:
+                  cfg = yaml.safe_load(f)
+
+              total = 0
+              for name, config in cfg.get("configs", {}).items():
+                  for flag in config.get("runtime_flags", []):
+                      total += 1
+                      clean = flag.split("=")[0].lstrip("-")
+                      if clean not in help_flags:
+                          errors.append(f"{name}: --{clean} NAO EXISTE no d8 --help!")
+                          print(f"  ::error::{name}: --{clean} INVENTADA!")
+
+              if errors:
+                  raise SystemExit(1)
+              print(f"  {total} runtime flags verificadas contra {len(help_flags)} do d8 --help")
+
+          test("Runtime flags cross-check", test_runtime_flags)
+
+          # ============================================================
+          # TEST 7: Required files (from manifest)
+          # ============================================================
+          def test_required_files():
+              checks = [
+                  ("scripts", manifest.get("required_scripts", []), False),
+                  ("harness", manifest.get("required_harness", []), True),
+                  ("references", manifest.get("required_references", []), False),
+                  ("actions", manifest.get("required_actions", []), False),
+              ]
+              for category, files, check_exec in checks:
+                  for f in files:
+                      if not os.path.exists(f):
+                          errors.append(f"{category}: {f} NAO EXISTE!")
+                          print(f"  ::error::MISSING {category}: {f}")
+                      elif check_exec and not os.access(f, os.X_OK):
+                          errors.append(f"{category}: {f} NAO EXECUTAVEL!")
+                          print(f"  ::error::NOT EXECUTABLE: {f}")
+                      else:
+                          print(f"  {f}: OK")
+
+              # PoCs
+              poc_cfg = manifest.get("required_pocs", {})
+              min_size = poc_cfg.get("min_size_bytes", 100)
+              for f in poc_cfg.get("files", []):
+                  if not os.path.exists(f):
+                      errors.append(f"PoC NAO EXISTE: {f}")
+                      print(f"  ::error::MISSING PoC: {f}")
+                  else:
+                      size = os.path.getsize(f)
+                      if size < min_size:
+                          errors.append(f"PoC TOO SMALL ({size}B < {min_size}B): {f}")
+                      else:
+                          print(f"  {f}: OK ({size}B)")
+
+              if errors:
+                  raise SystemExit(1)
+
+          test("Required files (from manifest)", test_required_files)
+
+          # ============================================================
+          # TEST 8: Composite actions parse
+          # ============================================================
+          def test_composite_actions():
+              for action_file in manifest.get("required_actions", []):
+                  if not os.path.exists(action_file):
+                      errors.append(f"Action MISSING: {action_file}")
+                      raise SystemExit(1)
+                  with open(action_file) as f:
+                      action = yaml.safe_load(f)
+                  name = action.get("name", "UNNAMED")
+                  steps = len(action.get("runs", {}).get("steps", []))
+                  if steps == 0:
+                      errors.append(f"Action '{name}' has 0 steps!")
+                      raise SystemExit(1)
+                  print(f"  {action_file}: OK ({name}, {steps} steps)")
+
+          test("Composite actions parse", test_composite_actions)
+
+          # ============================================================
+          # RESULTADO
+          # ============================================================
+          print(f"\n{'='*60}")
           if errors:
+              print(f"  FAILED: {tests_passed}/{tests_total} passed")
               for e in errors:
-                  print(f"::error::{e}", file=sys.stderr)
+                  print(f"  ERROR: {e}")
               sys.exit(1)
-
-          print(f"All {len(REQUIRED)} required configs present with valid structure")
+          else:
+              print(f"  ALL {tests_total} SMOKE TESTS PASSED")
+              if warnings:
+                  for w in warnings:
+                      print(f"  WARN: {w}")
+          print(f"{'='*60}")
           PYEOF
 
-      # ================================================================
-      # TEST 3: yaml2gn.py generates args.gn for every config
-      # ================================================================
-      - name: "[3/6] yaml2gn.py --validate (all configs)"
-        run: |
-          set -euo pipefail
-          python3 << 'PYEOF'
-          import yaml, subprocess, sys
-
-          with open("configs/v8-cf.yaml") as f:
-              cfg = yaml.safe_load(f)
-
-          failed = False
-          for name in cfg.get("configs", {}).keys():
-              result = subprocess.run(
-                  ["python3", "configs/yaml2gn.py", "configs/v8-cf.yaml", name, "--validate"],
-                  capture_output=True, text=True
-              )
-              if result.returncode != 0:
-                  errmsg = result.stderr.strip() or result.stdout.strip().split('\n')[-1]
-                  print(f"  {name}: FAIL — {errmsg}")
-                  failed = True
-              else:
-                  print(f"  {name}: OK")
-
-          if failed:
-              sys.exit(1)
-          print(f"\nyaml2gn.py --validate passed for all {len(cfg['configs'])} configs")
-          PYEOF
-
-      # ================================================================
-      # TEST 4: yaml2gn.py generates valid args.gn content
-      # ================================================================
-      - name: "[4/6] yaml2gn.py generates args.gn (dry-run)"
-        run: |
-          set -euo pipefail
-          python3 << 'PYEOF'
-          import yaml, subprocess, sys
-
-          with open("configs/v8-cf.yaml") as f:
-              cfg = yaml.safe_load(f)
-
-          failed = False
-          for name in cfg.get("configs", {}).keys():
-              result = subprocess.run(
-                  ["python3", "configs/yaml2gn.py", "configs/v8-cf.yaml", name],
-                  capture_output=True, text=True
-              )
-              if result.returncode != 0:
-                  print(f"  {name}: GENERATION FAILED — {result.stderr.strip()}")
-                  failed = True
-              else:
-                  lines = [l for l in result.stdout.strip().split("\n") if " = " in l]
-                  print(f"  {name}: OK ({len(lines)} GN args)")
-
-          if failed:
-              sys.exit(1)
-          print(f"\nargs.gn generation passed for all {len(cfg['configs'])} configs")
-          PYEOF
-
-      # ================================================================
-      # TEST 5: verify-build.py pre-validate works
-      # ================================================================
-      - name: "[5/6] verify-build.py pre-validate (all configs)"
-        run: |
-          set -euo pipefail
-          python3 << 'PYEOF'
-          import yaml, subprocess, sys
-
-          with open("configs/v8-cf.yaml") as f:
-              cfg = yaml.safe_load(f)
-
-          failed = False
-          for name in cfg.get("configs", {}).keys():
-              result = subprocess.run(
-                  ["python3", "configs/verify-build.py", "pre", "configs/v8-cf.yaml", name],
-                  capture_output=True, text=True
-              )
-              if result.returncode != 0:
-                  errmsg = result.stderr.strip() or result.stdout.strip().split('\n')[-1]
-                  print(f"  {name}: FAIL — {errmsg}")
-                  failed = True
-              else:
-                  print(f"  {name}: OK")
-
-          if failed:
-              sys.exit(1)
-          print(f"\nverify-build.py pre-validate passed for all {len(cfg['configs'])} configs")
-          PYEOF
-
-      # ================================================================
-      # TEST 6: Composite actions parse + PoC JS syntax
-      # ================================================================
-      - name: "[6/6] Composite actions YAML + PoC JS syntax"
-        run: |
-          set -euo pipefail
-
-          echo "=== Composite actions ==="
-          ACTIONS_OK=0
-          for action in .github/actions/*/action.yml; do
-            python3 -c "
-          import yaml
-          with open('$action') as f:
-              a = yaml.safe_load(f)
-          name = a.get('name', 'unnamed')
-          steps = len(a.get('runs', {}).get('steps', []))
-          print(f'  $action: OK (name={name}, {steps} steps)')
-          " || { echo "::error::ACTION PARSE FAILED: $action"; exit 1; }
-            ACTIONS_OK=$((ACTIONS_OK + 1))
-          done
-          echo "${ACTIONS_OK} composite action(s) validated"
-
-          echo ""
-          echo "=== PoC JS syntax check ==="
-          JS_OK=0
-          JS_TOTAL=0
-          JS_FILES=$(find configs/pocs -name '*.js' 2>/dev/null; echo configs/runtime-probe.js)
-          for js in $JS_FILES; do
-            [ -f "$js" ] || continue
-            JS_TOTAL=$((JS_TOTAL + 1))
-            if node --check "$js" 2>/dev/null; then
-              echo "  $js: OK"
-              JS_OK=$((JS_OK + 1))
-            else
-              echo "::warning::JS syntax issue (may use V8 extensions): $js"
-              JS_OK=$((JS_OK + 1))  # V8-specific syntax is expected, not a failure
-            fi
-          done
-          echo "${JS_OK}/${JS_TOTAL} JS file(s) checked"
-
-      # ================================================================
-      # SUMMARY
-      # ================================================================
       - name: Summary
+        if: always()
         run: |
-          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
-          ## Smoke Test Results
-
-          | Test | Status |
-          |------|--------|
-          | YAML parse | PASS |
-          | 7 configs exist | PASS |
-          | yaml2gn.py --validate | PASS |
-          | yaml2gn.py generate | PASS |
-          | verify-build.py pre | PASS |
-          | Actions + JS syntax | PASS |
-
-          All pipeline components validated without compiling V8.
-          EOF
           echo ""
-          echo "========================================="
-          echo "  ALL 6 SMOKE TESTS PASSED"
-          echo "========================================="
+          echo "Manifest: configs/manifest.yaml"
+          echo "Se um teste falhou, corrija o YAML ou o manifesto."

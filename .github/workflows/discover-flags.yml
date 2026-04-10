@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       v8_version:
-        description: "V8 version (vazio = auto-detect Cloudflare workerd)"
+        description: "V8 version (vazio = auto-detect Chrome stable)"
         required: false
         default: ""
         type: string
@@ -56,10 +56,12 @@ jobs:
         uses: actions/cache@v5
         with:
           path: depot_tools
-          key: depot-tools-v1
+          key: depot-tools-v2-no-cipd
 
       - name: Setup depot_tools
         run: |
+          export DEPOT_TOOLS_BOOTSTRAP_PYTHON3=0
+          export VPYTHON_BYPASS="manually managed python not supported by chrome operations"
           if [ ! -d depot_tools ]; then
             git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git
           fi
@@ -108,7 +110,10 @@ jobs:
           echo "# d8 runtime flags — V8 ${{ steps.version.outputs.V8_VERSION }}" > ../../configs/reference/v8-runtime-flags.txt
           echo "# Generated: $(date -u '+%Y-%m-%dT%H:%M:%SZ')" >> ../../configs/reference/v8-runtime-flags.txt
           echo "" >> ../../configs/reference/v8-runtime-flags.txt
-          ./out/discovery/d8 --help >> ../../configs/reference/v8-runtime-flags.txt 2>&1 || true
+          ./out/discovery/d8 --help >> ../../configs/reference/v8-runtime-flags.txt 2>&1 || {
+            echo "::error::d8 --help FALHOU! O binario pode nao ter compilado corretamente."
+            exit 1
+          }
 
       - name: Dump Sandbox API reference
         run: |

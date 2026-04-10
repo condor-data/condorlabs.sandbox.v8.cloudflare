@@ -1,0 +1,49 @@
+required_configs:
+- fast
+- fuzz
+- debug
+- release
+- asan
+- tsan
+- ubsan
+- wasm-stress
+- jit-stress
+- workerd-full
+- workerd-asan
+- workerd-tsan
+valid_families:
+- sandbox
+- sanitizer
+- workerd
+required_fields:
+- family
+- description
+required_fields_gn:
+- gn_args
+- runtime_flags
+required_scripts:
+- configs/yaml2gn.py
+- configs/verify-build.py
+- configs/runtime-probe.js
+required_harness:
+- configs/harness/fuzz-loop.sh
+- configs/harness/fuzz-mutate.sh
+- configs/harness/mutate-poc.py
+required_references:
+- configs/reference/v8-runtime-flags-d8-help.txt
+- configs/reference/v8-all-flags-complete.txt
+- configs/reference/lol-html-info.txt
+required_actions:
+- .github/actions/pre-validate/action.yml
+- .github/actions/setup-v8/action.yml
+- .github/actions/build-d8/action.yml
+- .github/actions/post-validate/action.yml
+- .github/actions/build-workerd/action.yml
+required_pocs:
+  min_size_bytes: 100
+  files:
+  - configs/pocs/poc-jspi-stack.js
+  - configs/pocs/poc-typedarray-bounds.js
+  - configs/pocs/poc-maglev-typeconfusion.js
+  - configs/pocs/poc-irregexp-bytecode.js
+  - configs/pocs/poc-wasm-table.js
