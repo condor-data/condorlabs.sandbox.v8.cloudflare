@@ -3,18 +3,18 @@
 # extract-v8-runtime-flags.sh — Extrai TODAS as runtime flags do V8
 #
 # Fonte: src/flags/flag-definitions.h
-# Metodo: grep por DEFINE_BOOL, DEFINE_INT, DEFINE_STRING, etc.
-# Output: configs/reference/v8-runtime-flags.txt
+# Metodo: Python regex multi-linha (sed nao funciona para macros multi-linha)
+# Output: nome, tipo, default, descricao — uma flag por linha
 #
 # Uso:
-#   ./extract-v8-runtime-flags.sh /path/to/v8/source > configs/reference/v8-runtime-flags.txt
-#   ./extract-v8-runtime-flags.sh /path/to/v8/source --category sandbox
+#   ./extract-v8-runtime-flags.sh /path/to/v8/source
+#   ./extract-v8-runtime-flags.sh /path/to/v8/source sandbox
+#   ./extract-v8-runtime-flags.sh /path/to/v8/source wasm
 ###############################################################################
 set -euo pipefail
 
-V8_SRC="${1:?Uso: $0 /path/to/v8/source [--category sandbox|wasm|maglev|turbofan|all]}"
-CATEGORY="${2:---category}"
-FILTER="${3:-all}"
+V8_SRC="${1:?ERRO: Uso: $0 /path/to/v8/source [filtro]}"
+FILTER="${2:-}"
 
 FLAGS_FILE="$V8_SRC/src/flags/flag-definitions.h"
 
@@ -23,52 +23,81 @@ if [ ! -f "$FLAGS_FILE" ]; then
     exit 1
 fi
 
-echo "# V8 Runtime Flags Reference"
-echo "# Fonte: $FLAGS_FILE"
-echo "# Extraido: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
-echo "# Linhas no arquivo: $(wc -l < "$FLAGS_FILE")"
-echo "#"
+python3 << PYEOF
+import re, sys
 
-# Contar por tipo
-echo "# Total flags:"
-echo "#   DEFINE_BOOL:   $(grep -c 'DEFINE_BOOL(' "$FLAGS_FILE" || echo 0)"
-echo "#   DEFINE_INT:    $(grep -c 'DEFINE_INT(' "$FLAGS_FILE" || echo 0)"
-echo "#   DEFINE_UINT:   $(grep -c 'DEFINE_UINT(' "$FLAGS_FILE" || echo 0)"
-echo "#   DEFINE_FLOAT:  $(grep -c 'DEFINE_FLOAT(' "$FLAGS_FILE" || echo 0)"
-echo "#   DEFINE_STRING: $(grep -c 'DEFINE_STRING(' "$FLAGS_FILE" || echo 0)"
-echo "#   DEFINE_BOOL_READONLY: $(grep -c 'DEFINE_BOOL_READONLY(' "$FLAGS_FILE" || echo 0)"
-echo "#   DEFINE_DEBUG_BOOL: $(grep -c 'DEFINE_DEBUG_BOOL(' "$FLAGS_FILE" || echo 0)"
-echo "#   DEFINE_EXPERIMENTAL_FEATURE: $(grep -c 'DEFINE_EXPERIMENTAL_FEATURE(' "$FLAGS_FILE" || echo 0)"
-TOTAL=$(grep -cE 'DEFINE_(BOOL|INT|UINT|FLOAT|STRING|BOOL_READONLY|DEBUG_BOOL|EXPERIMENTAL_FEATURE)\(' "$FLAGS_FILE" || echo 0)
-echo "#   TOTAL: $TOTAL"
-echo ""
+with open("$FLAGS_FILE") as f:
+    content = f.read()
 
-case "$FILTER" in
-    sandbox)
-        echo "=== SANDBOX FLAGS ==="
-        grep -n -i 'sandbox' "$FLAGS_FILE" | grep 'DEFINE_'
-        ;;
-    wasm)
-        echo "=== WASM FLAGS ==="
-        grep -n -i 'wasm' "$FLAGS_FILE" | grep 'DEFINE_'
-        ;;
-    maglev)
-        echo "=== MAGLEV FLAGS ==="
-        grep -n -i 'maglev' "$FLAGS_FILE" | grep 'DEFINE_'
-        ;;
-    turbofan)
-        echo "=== TURBOFAN/TURBOSHAFT FLAGS ==="
-        grep -n -i 'turbo' "$FLAGS_FILE" | grep 'DEFINE_'
-        ;;
-    all|*)
-        echo "=== ALL FLAGS (name, type, default, description) ==="
-        # Extrair: DEFINE_TYPE(name, default, "description")
-        grep -E 'DEFINE_(BOOL|INT|UINT|FLOAT|STRING|BOOL_READONLY|DEBUG_BOOL)\(' "$FLAGS_FILE" | \
-            sed 's/.*DEFINE_\([A-Z_]*\)(\([^,]*\),\s*\([^,]*\),\s*\(.*\)/\1 \2 \3 \4/' | \
-            sort -k2
-        echo ""
-        echo "=== EXPERIMENTAL FEATURES ==="
-        grep 'DEFINE_EXPERIMENTAL_FEATURE(' "$FLAGS_FILE" | \
-            sed 's/.*DEFINE_EXPERIMENTAL_FEATURE(\([^,]*\),\s*\(.*\)/EXPERIMENTAL \1 \2/'
-        ;;
-esac
+# Regex para DEFINE_TYPE(name, default, "description")
+# Flags podem estar em múltiplas linhas
+patterns = [
+    (r'DEFINE_BOOL\(\s*(\w+)\s*,\s*([^,]+?)\s*,\s*"([^"]*)"', "BOOL"),
+    (r'DEFINE_BOOL_READONLY\(\s*(\w+)\s*,\s*([^,]+?)\s*,\s*"([^"]*)"', "BOOL_RO"),
+    (r'DEFINE_DEBUG_BOOL\(\s*(\w+)\s*,\s*([^,]+?)\s*,\s*"([^"]*)"', "DEBUG_BOOL"),
+    (r'DEFINE_INT\(\s*(\w+)\s*,\s*([^,]+?)\s*,\s*"([^"]*)"', "INT"),
+    (r'DEFINE_UINT\(\s*(\w+)\s*,\s*([^,]+?)\s*,\s*"([^"]*)"', "UINT"),
+    (r'DEFINE_FLOAT\(\s*(\w+)\s*,\s*([^,]+?)\s*,\s*"([^"]*)"', "FLOAT"),
+    (r'DEFINE_STRING\(\s*(\w+)\s*,\s*([^,]+?)\s*,\s*"([^"]*)"', "STRING"),
+    (r'DEFINE_EXPERIMENTAL_FEATURE\(\s*(\w+)\s*,\s*"([^"]*)"', "EXPERIMENTAL"),
+]
+
+flags = {}
+for pattern, flag_type in patterns:
+    for match in re.finditer(pattern, content, re.DOTALL):
+        if flag_type == "EXPERIMENTAL":
+            name, desc = match.group(1), match.group(2)
+            default = "false"
+        else:
+            name, default, desc = match.group(1), match.group(2).strip(), match.group(3)
+        flags[name] = {"type": flag_type, "default": default, "desc": desc}
+
+# Filtrar se pedido
+filt = "$FILTER"
+if filt:
+    flags = {k: v for k, v in flags.items() if filt.lower() in k.lower() or filt.lower() in v["desc"].lower()}
+
+# Header
+print(f"# V8 Runtime Flags Reference")
+print(f"# Fonte: flag-definitions.h")
+print(f"# Total extraido: {len(flags)} flags")
+if filt:
+    print(f"# Filtro: {filt}")
+print(f"#")
+print(f"# Formato: --flag_name  [TYPE]  default=VALUE  // descricao")
+print()
+
+# Organizar por categoria
+categories = {
+    "SANDBOX": lambda k, v: "sandbox" in k,
+    "WASM": lambda k, v: "wasm" in k,
+    "MAGLEV": lambda k, v: "maglev" in k,
+    "TURBOFAN": lambda k, v: "turbo" in k,
+    "SPARKPLUG": lambda k, v: "sparkplug" in k,
+    "GC": lambda k, v: k.startswith("gc") or "gc_" in k or "scaveng" in k,
+    "TRACE": lambda k, v: "trace" in k,
+    "PRINT": lambda k, v: "print" in k or "dump" in k,
+}
+
+categorized = set()
+for cat_name, cat_fn in categories.items():
+    cat_flags = {k: v for k, v in flags.items() if cat_fn(k, v)}
+    if cat_flags:
+        print(f"=== {cat_name} ({len(cat_flags)}) ===")
+        for name in sorted(cat_flags):
+            f = cat_flags[name]
+            print(f"  --{name}  [{f['type']}]  default={f['default']}  // {f['desc']}")
+            categorized.add(name)
+        print()
+
+# Resto
+other = {k: v for k, v in flags.items() if k not in categorized}
+if other:
+    print(f"=== OTHER ({len(other)}) ===")
+    for name in sorted(other):
+        f = other[name]
+        print(f"  --{name}  [{f['type']}]  default={f['default']}  // {f['desc']}")
+
+print()
+print(f"# TOTAL: {len(flags)} flags")
+PYEOF
