@@ -15,6 +15,30 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Free disk space
+      shell: bash
+      run: |
+        echo "::group::Free disk space"
+        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost
+        sudo rm -rf /usr/local/graalvm /usr/local/lib/node_modules /usr/local/.ghcup
+        sudo apt-get autoremove -y 2>/dev/null || true
+        sudo apt-get clean 2>/dev/null || true
+        docker system prune -af 2>/dev/null || true
+        echo "Disk after cleanup:"
+        df -h .
+        echo "::endgroup::"
+
+    - name: Add swap space
+      shell: bash
+      run: |
+        sudo fallocate -l 8G /swapfile
+        sudo chmod 600 /swapfile
+        sudo mkswap /swapfile
+        sudo swapon /swapfile
+        sudo sysctl vm.swappiness=10
+        echo "Swap configured: 8GB"
+        free -h
+
     - name: Check runner resources
       shell: bash
       run: |
@@ -49,6 +73,8 @@ runs:
         sudo apt-get install -y -qq ccache ninja-build python3 lsb-release pkg-config
         ccache --max-size=8G
         ccache --zero-stats
+        export NINJA_SUMMARIZE_BUILD=1
+        echo "NINJA_SUMMARIZE_BUILD=1" >> $GITHUB_ENV
         echo "::endgroup::"
 
     - name: Cache depot_tools

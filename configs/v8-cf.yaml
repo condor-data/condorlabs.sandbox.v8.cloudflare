@@ -6,7 +6,11 @@ base:
   v8_enable_sandbox: true
   target_cpu: x64
   treat_warnings_as_errors: false
-  cc_wrapper: env CCACHE_SLOPPINESS=time_macros ccache
+  cc_wrapper: env CCACHE_SLOPPINESS=time_macros,include_file_mtime CCACHE_COMPRESS=1
+    CCACHE_NOHASHDIR=1 ccache
+  clang_use_chrome_plugins: false
+  v8_enable_i18n_support: false
+  concurrent_links: 1
 configs:
   fast:
     description: Iteracao rapida de PoC (component build, rebuild ~5-15s)
@@ -45,6 +49,8 @@ configs:
       is_component_build: false
       symbol_level: 0
       is_asan: false
+      strip_debug_info: true
+      v8_monolithic: true
     runtime_flags:
     - --sandbox-fuzzing
     - --allow-natives-syntax
@@ -91,6 +97,8 @@ configs:
       is_component_build: false
       symbol_level: 0
       is_asan: false
+      strip_debug_info: true
+      v8_monolithic: true
     runtime_flags:
     - --sandbox-fuzzing
     last_build_status: null
@@ -157,44 +165,37 @@ configs:
     last_build_version: null
     last_build_date: null
     d8_binary_size: null
-  # ===========================================================================
-  # WORKERD-FULL: Build completo via Bazel (runtime real do Workers)
-  # ===========================================================================
-
   workerd-full:
-    description: "Workerd completo via Bazel (runtime real, ~45min, ~30GB disco)"
+    description: Workerd completo via Bazel (runtime real, ~45min, ~30GB disco)
     family: workerd
     build_mode: bazel
-    bazel_target: "//src/workerd/server:workerd"
-    bazel_args: ""
+    bazel_target: //src/workerd/server:workerd
+    bazel_args: ''
     run_tests: false
     last_build_status: null
     last_build_version: null
     last_build_date: null
     workerd_binary_size: null
-
   workerd-asan:
-    description: "Workerd com ASAN via Bazel (UAF, buffer overflow)"
+    description: Workerd com ASAN via Bazel (UAF, buffer overflow)
     family: workerd
     build_mode: bazel
-    bazel_target: "//src/workerd/server:workerd"
-    bazel_args: "--config=asan"
+    bazel_target: //src/workerd/server:workerd
+    bazel_args: --config=asan
     run_tests: false
     last_build_status: null
     last_build_version: null
     last_build_date: null
     workerd_binary_size: null
-
   workerd-tsan:
-    description: "Workerd com TSAN via Bazel (data races — DefaultJobState UAF)"
+    description: Workerd com TSAN via Bazel (data races — DefaultJobState UAF)
     family: workerd
     build_mode: bazel
-    bazel_target: "//src/workerd/server:workerd"
-    bazel_args: "--config=tsan"
+    bazel_target: //src/workerd/server:workerd
+    bazel_args: --config=tsan
     run_tests: false
     last_build_status: null
     last_build_version: null
     last_build_date: null
     workerd_binary_size: null
-
 last_build: '2026-04-09T23:42:53Z'
