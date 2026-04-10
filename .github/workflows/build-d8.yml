@@ -127,6 +127,7 @@ jobs:
         uses: ./.github/actions/build-d8
         with:
           config: ${{ matrix.config }}
+          yaml_file: configs/v8-cf.yaml
 
       - name: "Phase 4: Post-validate"
         if: always() && !cancelled()
