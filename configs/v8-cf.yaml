@@ -138,10 +138,16 @@ configs:
     - --sandbox-fuzzing
     - --allow-natives-syntax
     - --expose-gc
-    last_build_status: null
-    last_build_version: null
-    last_build_date: null
-    d8_binary_size: null
+    last_build_status: OK
+    last_build_version: 14.7.173.16
+    last_build_date: '2026-04-10T19:05:47Z'
+    d8_binary_size: 65M
+    runtime_discovered:
+      introspect_date: '2026-04-10T19:05:45Z'
+      sanitizers_in_binary:
+        asan: false
+        tsan: false
+        ubsan: false
   asan:
     description: Address Sanitizer — UAF, buffer overflow, heap OOB
     family: sanitizer
@@ -354,4 +360,4 @@ configs:
     last_build_version: null
     last_build_date: null
     d8_binary_size: null
-last_build: '2026-04-10T18:02:44Z'
+last_build: '2026-04-10T19:05:47Z'
