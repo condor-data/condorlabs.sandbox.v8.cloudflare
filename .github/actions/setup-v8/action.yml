@@ -98,11 +98,20 @@ runs:
       uses: actions/cache@v5
       with:
         path: depot_tools
-        key: depot-tools-v1
+        key: depot-tools-v2-no-cipd
 
     - name: Setup depot_tools
       shell: bash
+      env:
+        # Usar Python do sistema (já instalado no runner) em vez de baixar via CIPD
+        # CIPD retorna 503 frequentemente e falha o bootstrap
+        DEPOT_TOOLS_BOOTSTRAP_PYTHON3: "0"
+        VPYTHON_BYPASS: "manually managed python not supported by chrome operations"
       run: |
+        # Exportar para steps seguintes
+        echo "DEPOT_TOOLS_BOOTSTRAP_PYTHON3=0" >> $GITHUB_ENV
+        echo "VPYTHON_BYPASS=manually managed python not supported by chrome operations" >> $GITHUB_ENV
+
         if [ ! -d depot_tools ] || [ ! -f depot_tools/gclient ]; then
           rm -rf depot_tools
           git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git || {
