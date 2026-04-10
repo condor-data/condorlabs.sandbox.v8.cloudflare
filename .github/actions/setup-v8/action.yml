@@ -119,35 +119,37 @@ runs:
         export VPYTHON_BYPASS="manually managed python not supported by chrome operations"
         echo "VPYTHON_BYPASS=manually managed python not supported by chrome operations" >> $GITHUB_ENV
 
-        # python3_bin_reldir.txt é um path RELATIVO ao depot_tools/python-bin/../
-        # O wrapper faz: exec depot_tools/python-bin/../$RELDIR/python3
-        # Então para /usr/bin/python3, o reldir precisa resolver para /usr/bin
-        # desde depot_tools/. Ou seja: caminho absoluto com ../ prefixado.
+        # O depot_tools/gn é um wrapper que precisa do binário real
+        # baixado via CIPD. Em vez de depender do CIPD, baixar o gn
+        # binário diretamente e ninja do apt.
         #
-        # Alternativa mais robusta: criar symlink direto
-        mkdir -p depot_tools/python-bin-system
-        ln -sf "$(which python3)" depot_tools/python-bin-system/python3
-        echo "python-bin-system" > depot_tools/python3_bin_reldir.txt
-        echo "python3_bin_reldir.txt -> python-bin-system (symlink para $(which python3))"
-        # Verificar que o symlink funciona
-        depot_tools/python-bin-system/python3 --version || {
-          echo "::error::Symlink python3 NAO FUNCIONA!"
-          ls -la depot_tools/python-bin-system/
-          exit 1
-        }
+        # gn binário: baixar do CIPD endpoint (que aceita download direto)
+        if [ ! -f depot_tools/.gn_binary ]; then
+          echo "Baixando gn binário..."
+          curl -sL "https://chrome-infra-packages.appspot.com/dl/gn/gn/linux-amd64/+/latest" \
+            -o /tmp/gn.zip || {
+            echo "::error::Download do gn binario FALHOU!"
+            exit 1
+          }
+          unzip -o /tmp/gn.zip -d depot_tools/ || {
+            echo "::error::Unzip do gn FALHOU!"
+            exit 1
+          }
+          touch depot_tools/.gn_binary
+          rm -f /tmp/gn.zip
+          echo "gn binário instalado"
+        fi
 
         # Verificar que gn funciona
         depot_tools/gn --version || {
           echo "::error::!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-          echo "::error::gn NAO FUNCIONA!"
-          echo "::error::python3_bin_reldir.txt: $(cat depot_tools/python3_bin_reldir.txt 2>&1)"
-          echo "::error::which python3: $(which python3 2>&1)"
-          echo "::error::python3 --version: $(python3 --version 2>&1)"
+          echo "::error::gn NAO FUNCIONA apos download direto!"
           echo "::error::ls depot_tools/gn: $(ls -la depot_tools/gn 2>&1)"
+          echo "::error::file depot_tools/gn: $(file depot_tools/gn 2>&1)"
           echo "::error::!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
           exit 1
         }
-        echo "depot_tools OK: gn $(depot_tools/gn --version)"
+        echo "gn OK: $(depot_tools/gn --version)"
 
     - name: Cache ccache
       uses: actions/cache@v5
