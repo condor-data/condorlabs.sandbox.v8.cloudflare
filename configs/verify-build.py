@@ -575,13 +575,82 @@ def cmd_introspect(yaml_path: str, config_name: str, d8_path: str, build_dir: st
 
 
 def _save_introspect_report(yaml_path: str, config_name: str, report: dict):
-    """Salva report de introspeccao em configs/reference/."""
+    """Salva report em JSON E grava flags descobertas de volta no YAML.
+
+    Isso fecha o ciclo: YAML define flags → build compila → introspect descobre
+    flags REAIS → YAML recebe as flags VIVAS do binário.
+    """
+    # 1. Salvar JSON report em configs/reference/
     ref_dir = os.path.join(os.path.dirname(yaml_path), "reference")
     os.makedirs(ref_dir, exist_ok=True)
     report_path = os.path.join(ref_dir, f"introspect-{config_name}.json")
     with open(report_path, "w") as f:
         json.dump(report, f, indent=2, default=str)
-    print(f"  Report salvo: {report_path}")
+    print(f"  Report JSON salvo: {report_path}")
+
+    # 2. Gravar flags descobertas de volta no YAML config
+    try:
+        with open(yaml_path) as f:
+            cfg = yaml.safe_load(f)
+
+        if config_name not in cfg.get("configs", {}):
+            print(f"  WARN: config '{config_name}' nao existe no YAML, pulando writeback")
+            return
+
+        config = cfg["configs"][config_name]
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        # Seção runtime_discovered: flags que o binário REALMENTE tem
+        discovered = {"introspect_date": now}
+
+        # GN overrides reais (do gn args --overrides-only)
+        gn_overrides = report.get("sources", {}).get("gn_overrides", {})
+        if isinstance(gn_overrides, dict) and "error" not in gn_overrides:
+            discovered["gn_overrides_active"] = gn_overrides
+
+        # Sanitizers no binário (do nm)
+        binary_san = report.get("sources", {}).get("binary_sanitizers", {})
+        if isinstance(binary_san, dict):
+            discovered["sanitizers_in_binary"] = binary_san
+
+        # Preprocessor defines (do gn desc)
+        gn_defines = report.get("sources", {}).get("gn_defines", [])
+        if isinstance(gn_defines, list):
+            # Filtrar só os defines relevantes para sandbox/security
+            relevant = [d for d in gn_defines if any(k in d for k in [
+                "V8_ENABLE_SANDBOX", "DCHECK", "V8_ENABLE_MEMORY_CORRUPTION",
+                "ASAN", "TSAN", "UBSAN", "V8_ENABLE_VERIFY_HEAP",
+                "COMPONENT_BUILD", "DEBUG"
+            ])]
+            if relevant:
+                discovered["preprocessor_defines"] = relevant
+
+        # Runtime probe (do runtime-probe.js)
+        runtime = report.get("sources", {}).get("runtime_probe", {})
+        if isinstance(runtime, dict) and "error" not in runtime:
+            discovered["runtime"] = {
+                "v8_version": runtime.get("v8_version"),
+                "is_64bit": runtime.get("platform", {}).get("is_64bit"),
+                "sandbox_api_available": runtime.get("build", {}).get("sandbox_api"),
+                "verify_heap_active": runtime.get("build", {}).get("verify_heap"),
+                "gc_exposed": runtime.get("build", {}).get("gc_exposed"),
+                "compilers": runtime.get("compilers", {}),
+            }
+            # Sandbox API methods descobertos
+            methods = runtime.get("sandbox_api_methods", [])
+            if methods:
+                discovered["sandbox_api_methods"] = [m["name"] for m in methods]
+
+        config["runtime_discovered"] = discovered
+
+        with open(yaml_path, "w") as f:
+            yaml.dump(cfg, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+
+        print(f"  Flags vivas gravadas no YAML: {len(discovered)} campos")
+
+    except Exception as e:
+        print(f"  ERRO ao gravar flags no YAML: {e}")
+        # Não falhar o introspect por causa de writeback — o JSON report já está salvo
 
 
 # =============================================================================
