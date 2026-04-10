@@ -50,7 +50,10 @@ jobs:
             echo "::notice::Override: ${{ inputs.lol_html_ref }}"
           else
             # Extrair commit do lol-html do workerd deps
-            LOL_COMMIT=$(curl -sf 'https://raw.githubusercontent.com/cloudflare/workerd/main/deps/rust/crates/BUILD.lol_html-2.7.2.bazel' | head -5 | grep -oP '[0-9a-f]{40}' || echo "")
+            LOL_COMMIT=$(curl -sf 'https://raw.githubusercontent.com/cloudflare/workerd/main/deps/rust/crates/BUILD.lol_html-2.7.2.bazel' | head -5 | grep -oP '[0-9a-f]{40}')
+            if [ -z "$LOL_COMMIT" ]; then
+              echo "::error::Nao conseguiu detectar commit do lol-html do workerd!"
+              echo "::error::Usando fallback hardcoded — PODE ESTAR DESATUALIZADO!"
             if [ -z "$LOL_COMMIT" ]; then
               LOL_COMMIT="e3aa54798602dd27250fafde1b5a66f080046252"
               echo "::warning::Nao conseguiu detectar commit. Usando fallback: ${LOL_COMMIT}"

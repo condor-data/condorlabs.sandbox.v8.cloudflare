@@ -177,5 +177,15 @@ jobs:
           git config user.name "condor-data-bot"
           git config user.email "bot@condor-data.github.io"
           git add configs/v8-cf.yaml
-          git commit -m "build-status: workerd-full = ${{ steps.build.outcome }}" || true
-          git push || echo "::warning::Push failed"
+          if git diff --cached --quiet; then
+            echo "Nenhuma mudanca"
+          else
+            git commit -m "build-status: workerd-full = ${{ steps.build.outcome }}" || {
+              echo "::error::git commit FALHOU!"
+              exit 1
+            }
+          fi
+          git pull --rebase origin main 2>&1 && git push origin main 2>&1 || {
+            echo "::error::git push FALHOU!"
+            exit 1
+          }
