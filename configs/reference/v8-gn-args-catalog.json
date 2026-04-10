@@ -1,0 +1,1460 @@
+{
+  "extracted_at": "2026-04-10T13:20:31.453713Z",
+  "total_args": 181,
+  "total_raw": 187,
+  "duplicates_removed": 6,
+  "sources": [
+    "gni/v8.gni",
+    "BUILD.gn"
+  ],
+  "args": [
+    {
+      "name": "v8_android_log_stdout",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Print to stdout on Android.",
+      "source_file": "BUILD.gn",
+      "line": 38
+    },
+    {
+      "name": "v8_custom_deps",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Dynamically set an additional dependency from v8/custom_deps.",
+      "source_file": "BUILD.gn",
+      "line": 41
+    },
+    {
+      "name": "v8_enable_future",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Sets -DV8_ENABLE_FUTURE.",
+      "source_file": "BUILD.gn",
+      "line": 44
+    },
+    {
+      "name": "v8_enable_system_instrumentation",
+      "raw_default": "(is_win || is_mac) && !v8_use_perfetto",
+      "type": "bool_expr",
+      "comment": "Sets -DENABLE_SYSTEM_INSTRUMENTATION. Enables OS-dependent event tracing",
+      "source_file": "BUILD.gn",
+      "line": 47
+    },
+    {
+      "name": "v8_etw_guid",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Sets the GUID for the ETW provider",
+      "source_file": "BUILD.gn",
+      "line": 50
+    },
+    {
+      "name": "v8_enable_verify_heap",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Sets -DVERIFY_HEAP.",
+      "source_file": "BUILD.gn",
+      "line": 53
+    },
+    {
+      "name": "v8_enable_verify_write_barriers",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Sets -DVERIFY_WRITE_BARRIERS.",
+      "source_file": "BUILD.gn",
+      "line": 56
+    },
+    {
+      "name": "v8_enable_verify_predictable",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Sets -DVERIFY_PREDICTABLE",
+      "source_file": "BUILD.gn",
+      "line": 59
+    },
+    {
+      "name": "v8_deprecation_warnings",
+      "raw_default": "true",
+      "type": "bool",
+      "comment": "Enable compiler warnings when using V8_DEPRECATED apis.",
+      "source_file": "BUILD.gn",
+      "line": 62
+    },
+    {
+      "name": "v8_imminent_deprecation_warnings",
+      "raw_default": "true",
+      "type": "bool",
+      "comment": "Enable compiler warnings when using V8_DEPRECATE_SOON apis.",
+      "source_file": "BUILD.gn",
+      "line": 65
+    },
+    {
+      "name": "v8_embed_script",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Embeds the given script into the snapshot.",
+      "source_file": "BUILD.gn",
+      "line": 68
+    },
+    {
+      "name": "v8_embedder_string",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Allows the embedder to add a custom suffix to the version string.",
+      "source_file": "BUILD.gn",
+      "line": 71
+    },
+    {
+      "name": "v8_enable_disassembler",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Sets -DENABLE_DISASSEMBLER.",
+      "source_file": "BUILD.gn",
+      "line": 74
+    },
+    {
+      "name": "v8_enable_regexp_diagnostics",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Sets -DV8_ENABLE_REGEXP_DIAGNOSTICS.",
+      "source_file": "BUILD.gn",
+      "line": 77
+    },
+    {
+      "name": "v8_promise_internal_field_count",
+      "raw_default": "0",
+      "type": "int",
+      "comment": "Sets the number of internal fields on promise objects.",
+      "source_file": "BUILD.gn",
+      "line": 80
+    },
+    {
+      "name": "v8_array_buffer_internal_field_count",
+      "raw_default": "0",
+      "type": "int",
+      "comment": "Sets the number of internal fields on array buffer objects.",
+      "source_file": "BUILD.gn",
+      "line": 83
+    },
+    {
+      "name": "v8_array_buffer_view_internal_field_count",
+      "raw_default": "0",
+      "type": "int",
+      "comment": "Sets the number of internal fields on array buffer view objects.",
+      "source_file": "BUILD.gn",
+      "line": 86
+    },
+    {
+      "name": "v8_enable_vtunejit",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Sets -DENABLE_VTUNE_JIT_INTERFACE.",
+      "source_file": "BUILD.gn",
+      "line": 89
+    },
+    {
+      "name": "v8_enable_vtunetracemark",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Sets -DENABLE_VTUNE_TRACEMARK.",
+      "source_file": "BUILD.gn",
+      "line": 92
+    },
+    {
+      "name": "v8_enable_apx_f",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Sets -DV8_ENABLE_APX_F.",
+      "source_file": "BUILD.gn",
+      "line": 95
+    },
+    {
+      "name": "v8_enable_hugepage",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Sets -DENABLE_HUGEPAGE",
+      "source_file": "BUILD.gn",
+      "line": 98
+    },
+    {
+      "name": "v8_enable_private_mapping_fork_optimization",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Sets -DV8_ENABLE_PRIVATE_MAPPING_FORK_OPTIMIZATION.  This flag speeds up the performance of fork/execve on Linux systems for embedders which use it (like Node.js). It works by marking the pages that V8 allocates as MADV_DONTFORK. Without MADV_DONTFORK, the Linux kernel spends a long time manipulating page mappings on fork and exec which the child process doesn't generally need to access.  See v8:7381 for more details.",
+      "source_file": "BUILD.gn",
+      "line": 109
+    },
+    {
+      "name": "v8_enable_handle_zapping",
+      "raw_default": "is_asan || is_debug",
+      "type": "bool_expr",
+      "comment": "Sets the default for v8_enable_local_handle_zapping and v8_enable_global_handle_zapping.",
+      "source_file": "BUILD.gn",
+      "line": 113
+    },
+    {
+      "name": "v8_enable_local_handle_zapping",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Sets -DENABLE_LOCAL_HANDLE_ZAPPING, which is more expensive than just the global handles.  By default it is enabled if v8_enable_handle_zapping is enabled.",
+      "source_file": "BUILD.gn",
+      "line": 118
+    },
+    {
+      "name": "v8_enable_global_handle_zapping",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Sets -DENABLE_GLOBAL_HANDLE_ZAPPING.  By default it is enabled if v8_enable_handle_zapping is enabled.",
+      "source_file": "BUILD.gn",
+      "line": 122
+    },
+    {
+      "name": "v8_enable_slow_dchecks",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Enable slow dchecks.",
+      "source_file": "BUILD.gn",
+      "line": 125
+    },
+    {
+      "name": "v8_enable_fast_mksnapshot",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Enable fast mksnapshot runs.",
+      "source_file": "BUILD.gn",
+      "line": 128
+    },
+    {
+      "name": "v8_enable_concurrent_mksnapshot",
+      "raw_default": "true",
+      "type": "bool",
+      "comment": "Enable using multiple threads to build builtins in mksnapshot.",
+      "source_file": "BUILD.gn",
+      "line": 131
+    },
+    {
+      "name": "v8_enable_fast_torque",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Optimize code for Torque executable, even during a debug build.",
+      "source_file": "BUILD.gn",
+      "line": 134
+    },
+    {
+      "name": "v8_win64_unwinding_info",
+      "raw_default": "true",
+      "type": "bool",
+      "comment": "Enable the registration of unwinding info for Windows x64 and ARM64.",
+      "source_file": "BUILD.gn",
+      "line": 137
+    },
+    {
+      "name": "v8_enable_snapshot_code_comments",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Enable code comments for builtins in the snapshot (impacts performance). This also enables v8_code_comments.",
+      "source_file": "BUILD.gn",
+      "line": 141
+    },
+    {
+      "name": "v8_code_comments",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Allow runtime-enabled code comments (with --code-comments). Enabled by default in debug builds. Sets -DV8_CODE_COMMENTS",
+      "source_file": "BUILD.gn",
+      "line": 146
+    },
+    {
+      "name": "v8_enable_debug_code",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Allow runtime-enabled debug code (with --debug-code). Enabled by default in debug builds. Sets -DV8_ENABLE_DEBUG_CODE",
+      "source_file": "BUILD.gn",
+      "line": 151
+    },
+    {
+      "name": "v8_enable_snapshot_native_code_counters",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Enable native counters from the snapshot (impacts performance, sets -DV8_SNAPSHOT_NATIVE_CODE_COUNTERS). This option will generate extra code in the snapshot to increment counters, as per the --native-code-counters flag.",
+      "source_file": "BUILD.gn",
+      "line": 157
+    },
+    {
+      "name": "v8_enable_static_roots",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Use pre-generated static root pointer values from static-roots.h.",
+      "source_file": "BUILD.gn",
+      "line": 160
+    },
+    {
+      "name": "v8_enable_static_roots_generation",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Mode used by gen-static-roots.py to have a heap layout which is identical to when v8_enable_static_roots is enabled.",
+      "source_file": "BUILD.gn",
+      "line": 164
+    },
+    {
+      "name": "v8_enable_verify_csa",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Enable code-generation-time checking of types in the CodeStubAssembler.",
+      "source_file": "BUILD.gn",
+      "line": 167
+    },
+    {
+      "name": "v8_enable_object_print",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Sets -DOBJECT_PRINT.",
+      "source_file": "BUILD.gn",
+      "line": 170
+    },
+    {
+      "name": "v8_always_enable_maglev_graph_labeller",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Sets -DALWAYS_MAGLEV_GRAPH_LABELLER.",
+      "source_file": "BUILD.gn",
+      "line": 173
+    },
+    {
+      "name": "v8_enable_trace_maps",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Sets -DV8_TRACE_MAPS.",
+      "source_file": "BUILD.gn",
+      "line": 176
+    },
+    {
+      "name": "v8_enable_v8_checks",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Sets -DV8_ENABLE_CHECKS.",
+      "source_file": "BUILD.gn",
+      "line": 179
+    },
+    {
+      "name": "v8_enable_memory_accounting_checks",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Sets -DV8_ENABLE_MEMORY_ACCOUNTING_CHECKS",
+      "source_file": "BUILD.gn",
+      "line": 182
+    },
+    {
+      "name": "v8_enable_trace_unoptimized",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Sets -DV8_TRACE_UNOPTIMIZED.",
+      "source_file": "BUILD.gn",
+      "line": 185
+    },
+    {
+      "name": "v8_enable_trace_ignition",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "",
+      "source_file": "BUILD.gn",
+      "line": 186
+    },
+    {
+      "name": "v8_enable_trace_baseline_exec",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "",
+      "source_file": "BUILD.gn",
+      "line": 187
+    },
+    {
+      "name": "v8_enable_trace_feedback_updates",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Sets -DV8_TRACE_FEEDBACK_UPDATES.",
+      "source_file": "BUILD.gn",
+      "line": 190
+    },
+    {
+      "name": "v8_enable_atomic_object_field_writes",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Sets -DV8_ATOMIC_OBJECT_FIELD_WRITES and turns all field write operations into relaxed atomic operations.",
+      "source_file": "BUILD.gn",
+      "line": 194
+    },
+    {
+      "name": "v8_enable_concurrent_marking",
+      "raw_default": "true",
+      "type": "bool",
+      "comment": "Controls the default value of v8_enable_concurrent_marking_state. See the default setting code below.",
+      "source_file": "BUILD.gn",
+      "line": 198
+    },
+    {
+      "name": "v8_enable_ignition_dispatch_counting",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Sets -DV8_IGNITION_DISPATCH_COUNTING. Enables counting frequencies of bytecode dispatches. After building in this configuration, subsequent runs of d8 can output frequencies for each pair of (current, next) bytecode instructions executed if you specify --trace-ignition-dispatches-output-file, or can generate a JS object with those frequencies if you run with --expose-ignition-statistics and call the extension function getIgnitionDispatchCounters().",
+      "source_file": "BUILD.gn",
+      "line": 207
+    },
+    {
+      "name": "v8_enable_builtins_frame_elision",
+      "raw_default": "true",
+      "type": "bool",
+      "comment": "Enable frame elision for builtins.",
+      "source_file": "BUILD.gn",
+      "line": 210
+    },
+    {
+      "name": "v8_enable_builtins_profiling",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Runs mksnapshot with --turbo-profiling. After building in this configuration, any subsequent run of d8 will output information about usage of basic blocks in builtins.",
+      "source_file": "BUILD.gn",
+      "line": 215
+    },
+    {
+      "name": "v8_enable_builtins_profiling_verbose",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Runs mksnapshot with --turbo-profiling-verbose. After building in this configuration, any subsequent run of d8 will output information about usage of basic blocks in builtins, including the schedule and disassembly of all used builtins.",
+      "source_file": "BUILD.gn",
+      "line": 221
+    },
+    {
+      "name": "v8_log_builtins_block_count_input",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "This build flag is used to input a builtin pgo file containing raw execution counts (as opposed to branch hints), which are embedded into the `--trace-turbo` .json file from `mksnapshot`.",
+      "source_file": "BUILD.gn",
+      "line": 226
+    },
+    {
+      "name": "v8_enable_builtins_block_position",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "This build flag is used to enable block positioning in profile-guided optimization of builtins based on raw execution counts (as opposed to branch hints).",
+      "source_file": "BUILD.gn",
+      "line": 231
+    },
+    {
+      "name": "v8_enable_builtins_reordering",
+      "raw_default": "true",
+      "type": "bool",
+      "comment": "This build flag is used to control whether reorder builtins according to the call graph with C3 algorithm based builtin PGO profiling.",
+      "source_file": "BUILD.gn",
+      "line": 235
+    },
+    {
+      "name": "v8_builtins_profiling_log_file",
+      "raw_default": "\"default\"",
+      "type": "string",
+      "comment": "Provides the given V8 log file as an input to mksnapshot, where it can be used for profile-guided optimization of builtins.  To do profile-guided optimizations of builtins: 1. Build with v8_enable_builtins_profiling = true 2. Run your chosen workload with the --turbo-profiling-output flag. For Chrome, the invocation might look like this: chrome --no-sandbox --disable-extensions --js-flags=\"--turbo-profiling-output=v8.builtins.pgo\" \"http://localhost/test-suite\" 3. Run tools/builtins-pgo/get_hints.py to produce the branch hints, selecting min_count and threshold_ratio as you wish. 4. Optionally repeat steps 2-3 for additional workloads, and use tools/builtins-pgo/combine_hints.py to combine the hints produced in step 3 into a single file. 5. Build again with v8_builtins_profiling_log_file set to the file created in step 3 or 4.",
+      "source_file": "BUILD.gn",
+      "line": 254
+    },
+    {
+      "name": "v8_enable_builtins_gearbox",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Enable gearbox (instruction set extension) for builtins, the gearbox feature only supports x64 arch yet. Sets -DV8_BUILTINS_GEARBOX",
+      "source_file": "BUILD.gn",
+      "line": 259
+    },
+    {
+      "name": "v8_enable_test_features",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Enables various testing features.",
+      "source_file": "BUILD.gn",
+      "line": 262
+    },
+    {
+      "name": "v8_enable_short_builtin_calls",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Enable short builtins call instruction sequences by un-embedding builtins. Sets -DV8_SHORT_BUILTIN_CALLS",
+      "source_file": "BUILD.gn",
+      "line": 266
+    },
+    {
+      "name": "v8_enable_external_code_space",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Enable support for external code range relative to the pointer compression cage. Sets -DV8_EXTERNAL_CODE_SPACE",
+      "source_file": "BUILD.gn",
+      "line": 271
+    },
+    {
+      "name": "v8_postmortem_support",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "With post mortem support enabled, metadata is embedded into libv8 that describes various parameters of the VM for use by debuggers. See tools/gen-postmortem-metadata.py for details.",
+      "source_file": "BUILD.gn",
+      "line": 276
+    },
+    {
+      "name": "v8_use_siphash",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Use Siphash as added protection against hash flooding attacks.",
+      "source_file": "BUILD.gn",
+      "line": 279
+    },
+    {
+      "name": "v8_no_inline",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Switches off inlining in V8.",
+      "source_file": "BUILD.gn",
+      "line": 282
+    },
+    {
+      "name": "v8_os_page_size",
+      "raw_default": "\"0\"",
+      "type": "string",
+      "comment": "Override OS page size when generating snapshot",
+      "source_file": "BUILD.gn",
+      "line": 285
+    },
+    {
+      "name": "v8_can_use_fpu_instructions",
+      "raw_default": "true",
+      "type": "bool",
+      "comment": "Similar to vfp but on MIPS.",
+      "source_file": "BUILD.gn",
+      "line": 288
+    },
+    {
+      "name": "v8_use_mips_abi_hardfloat",
+      "raw_default": "true",
+      "type": "bool",
+      "comment": "Similar to the ARM hard float ABI but on MIPS.",
+      "source_file": "BUILD.gn",
+      "line": 291
+    },
+    {
+      "name": "v8_typed_array_max_size_in_heap",
+      "raw_default": "64",
+      "type": "int",
+      "comment": "Controls the threshold for on-heap/off-heap Typed Arrays.",
+      "source_file": "BUILD.gn",
+      "line": 294
+    },
+    {
+      "name": "v8_check_header_includes",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Check that each header can be included in isolation (requires also setting the \"check_v8_header_includes\" gclient variable to run a specific hook).",
+      "source_file": "BUILD.gn",
+      "line": 305
+    },
+    {
+      "name": "v8_enable_lazy_source_positions",
+      "raw_default": "true",
+      "type": "bool",
+      "comment": "Enable lazy source positions by default.",
+      "source_file": "BUILD.gn",
+      "line": 308
+    },
+    {
+      "name": "v8_disable_write_barriers",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Disable write barriers when GCs are non-incremental and heap has single generation.",
+      "source_file": "BUILD.gn",
+      "line": 312
+    },
+    {
+      "name": "v8_enable_unconditional_write_barriers",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Ensure that write barriers are always used. Useful for debugging purposes.",
+      "source_file": "BUILD.gn",
+      "line": 316
+    },
+    {
+      "name": "v8_enable_single_generation",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Redirect allocation in young generation so that there will be only one single generation.",
+      "source_file": "BUILD.gn",
+      "line": 320
+    },
+    {
+      "name": "v8_enable_regexp_interpreter_threaded_dispatch",
+      "raw_default": "true",
+      "type": "bool",
+      "comment": "Use token threaded dispatch for the regular expression interpreter. Use switch-based dispatch if this is false",
+      "source_file": "BUILD.gn",
+      "line": 324
+    },
+    {
+      "name": "v8_verify_builtins_compatibility",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Enforce equality of builtins hashes from compatible architectures.",
+      "source_file": "BUILD.gn",
+      "line": 327
+    },
+    {
+      "name": "v8_verify_deterministic_mksnapshot",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Check mksnapshot determinism by running it multiple times.",
+      "source_file": "BUILD.gn",
+      "line": 330
+    },
+    {
+      "name": "v8_verify_torque_generation_invariance",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Enable additional targets necessary for verification of torque file generation",
+      "source_file": "BUILD.gn",
+      "line": 334
+    },
+    {
+      "name": "v8_annotate_torque_ir",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Generate comments describing the Torque intermediate representation.",
+      "source_file": "BUILD.gn",
+      "line": 337
+    },
+    {
+      "name": "target_os",
+      "raw_default": "= \"android\" || target_os == \"chromeos\" || target_os == \"fuchsia\"",
+      "type": "bool_expr",
+      "comment": "Enable snapshot compression (enabled by default for desktop) devices.",
+      "source_file": "BUILD.gn",
+      "line": 342
+    },
+    {
+      "name": "v8_control_flow_integrity",
+      "raw_default": "v8_current_cpu == \"arm64\" && ((v8_target_is_simulator && target_os != \"mac\") || arm_control_flow_integrity != \"none\")",
+      "type": "bool_expr",
+      "comment": "Enable control-flow integrity features, such as pointer authentication for ARM64. Enable it by default for simulator builds and when native code supports it as well. On Mac, control-flow integrity does not work so we avoid enabling it when using the simulator.",
+      "source_file": "BUILD.gn",
+      "line": 350
+    },
+    {
+      "name": "v8_current_cpu",
+      "raw_default": "= \"x64\" || v8_current_cpu == \"arm64\" || v8_current_cpu == \"loong64\" || v8_current_cpu == \"riscv64\"",
+      "type": "bool_expr",
+      "comment": "Enable heap reservation of size 4GB. Only possible for 64bit archs.",
+      "source_file": "BUILD.gn",
+      "line": 355
+    },
+    {
+      "name": "cppgc_enable_verify_heap",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Enables additional heap verification phases and checks.",
+      "source_file": "BUILD.gn",
+      "line": 358
+    },
+    {
+      "name": "cppgc_allow_allocations_in_prefinalizers",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Enable allocations during prefinalizer invocations.",
+      "source_file": "BUILD.gn",
+      "line": 361
+    },
+    {
+      "name": "v8_enable_sandbox",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Enable the V8 sandbox. Sets -DV8_ENABLE_SANDBOX.",
+      "source_file": "BUILD.gn",
+      "line": 365
+    },
+    {
+      "name": "v8_enable_sandbox_hardware_support",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Enable experimental hardware support for the V8 sandbox if available. Sets -DV8_ENABLE_SANDBOX_HARDWARE_SUPPORT",
+      "source_file": "BUILD.gn",
+      "line": 369
+    },
+    {
+      "name": "v8_enable_memory_corruption_api",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Enable the memory corruption API. Useful for testing the sandbox. The memory corruption API is only exposed to JavaScript if sandbox testing mode is enabled at runtime, for example via --sandbox-fuzzing. WARNING This will enable builtins that (by design) cause memory corruption. Sets -DV8_ENABLE_MEMORY_CORRUPTION_API",
+      "source_file": "BUILD.gn",
+      "line": 376
+    },
+    {
+      "name": "v8_enable_precise_zone_stats",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Experimental feature for collecting per-class zone memory stats. Requires use_rtti = true",
+      "source_file": "BUILD.gn",
+      "line": 380
+    },
+    {
+      "name": "v8_monolithic_for_shared_library",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Set this if V8 monolithic static library is going to be linked into another shared library.",
+      "source_file": "BUILD.gn",
+      "line": 384
+    },
+    {
+      "name": "v8_enable_swiss_name_dictionary",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Experimental feature that uses SwissNameDictionary instead of NameDictionary as the backing store for all dictionary mode objects.",
+      "source_file": "BUILD.gn",
+      "line": 388
+    },
+    {
+      "name": "v8_generate_external_defines_header",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "If enabled then macro definitions that are used in externally visible header files are placed in a separate header file v8-gn.h.",
+      "source_file": "BUILD.gn",
+      "line": 392
+    },
+    {
+      "name": "v8_dict_property_const_tracking",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Experimental feature for tracking constness of properties in non-global dictionaries. Enabling this also always keeps prototypes in dict mode, meaning that they are not switched to fast mode. Sets -DV8_DICT_PROPERTY_CONST_TRACKING",
+      "source_file": "BUILD.gn",
+      "line": 398
+    },
+    {
+      "name": "v8_enable_map_packing",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Enable map packing & unpacking (sets -DV8_MAP_PACKING).",
+      "source_file": "BUILD.gn",
+      "line": 401
+    },
+    {
+      "name": "v8_enable_javascript_promise_hooks",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Allow for JS promise hooks (instead of just C++).",
+      "source_file": "BUILD.gn",
+      "line": 404
+    },
+    {
+      "name": "v8_enable_continuation_preserved_embedder_data",
+      "raw_default": "true",
+      "type": "bool",
+      "comment": "Allow embedder data to be saved on continuations. Used to support TaskAttribution and `scheduler.yield()`. The flag enables disabling the feature, to test this data's overhead.",
+      "source_file": "BUILD.gn",
+      "line": 409
+    },
+    {
+      "name": "v8_enable_allocation_folding",
+      "raw_default": "true",
+      "type": "bool",
+      "comment": "Enable allocation folding globally (sets -DV8_ALLOCATION_FOLDING). When it's disabled, the --turbo-allocation-folding runtime flag will be ignored.",
+      "source_file": "BUILD.gn",
+      "line": 413
+    },
+    {
+      "name": "v8_enable_heap_snapshot_verify",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Enable runtime verification of heap snapshots produced for devtools.",
+      "source_file": "BUILD.gn",
+      "line": 416
+    },
+    {
+      "name": "v8_allocation_site_tracking",
+      "raw_default": "true",
+      "type": "bool",
+      "comment": "Enable global allocation site tracking.",
+      "source_file": "BUILD.gn",
+      "line": 419
+    },
+    {
+      "name": "v8_scriptormodule_legacy_lifetime",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "TODO(cbruni, v8:12302): Remove once API is migrated Enable legacy mode for ScriptOrModule's lifetime. By default it's a temporary object, if enabled it will be kept alive by the parent Script. This is only used by nodejs.",
+      "source_file": "BUILD.gn",
+      "line": 425
+    },
+    {
+      "name": "v8_enable_pointer_compression_8gb",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Enables pointer compression for 8GB heaps. Sets -DV8_COMPRESS_POINTERS_8GB.",
+      "source_file": "BUILD.gn",
+      "line": 429
+    },
+    {
+      "name": "v8_use_zlib",
+      "raw_default": "true",
+      "type": "bool",
+      "comment": "Compile V8 using zlib as dependency. Sets -DV8_USE_ZLIB",
+      "source_file": "BUILD.gn",
+      "line": 433
+    },
+    {
+      "name": "v8_value_deserializer_hard_fail",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Make ValueDeserializer crash if the data to deserialize is invalid.",
+      "source_file": "BUILD.gn",
+      "line": 436
+    },
+    {
+      "name": "v8_jitless",
+      "raw_default": "v8_enable_lite_mode",
+      "type": "ref",
+      "comment": "Enable jitless mode, including compile-time optimizations. Note that even when this is set to 'false', one can run V8 in jitless mode at runtime by passing the `--jitless` flag; but then you miss out on compile-time optimizations.",
+      "source_file": "BUILD.gn",
+      "line": 442
+    },
+    {
+      "name": "v8_enable_sparkplug",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Enable Sparkplug Sets -DV8_ENABLE_SPARKPLUG.",
+      "source_file": "BUILD.gn",
+      "line": 446
+    },
+    {
+      "name": "v8_enable_maglev_graph_printer",
+      "raw_default": "!build_with_chromium",
+      "type": "bool_expr",
+      "comment": "Enable Maglev's graph printer. Sets -DV8_ENABLE_MAGLEV_GRAPH_PRINTER.",
+      "source_file": "BUILD.gn",
+      "line": 450
+    },
+    {
+      "name": "v8_enable_slow_tracing",
+      "raw_default": "is_debug",
+      "type": "ref",
+      "comment": "Enable slow tracing, e.g., tracing on every instruction or Turbofan node. Sets -DV8_ENABLE_SLOW_TRACING.",
+      "source_file": "BUILD.gn",
+      "line": 454
+    },
+    {
+      "name": "v8_shortcut_strings_in_minor_ms",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "",
+      "source_file": "BUILD.gn",
+      "line": 460
+    },
+    {
+      "name": "v8_enable_extensible_ro_snapshot",
+      "raw_default": "true",
+      "type": "bool",
+      "comment": "Whether custom embedder snapshots may extend (= allocate new objects in) ReadOnlySpace.",
+      "source_file": "BUILD.gn",
+      "line": 464
+    },
+    {
+      "name": "v8_enable_black_allocated_pages",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Black allocate objects on separate pages.",
+      "source_file": "BUILD.gn",
+      "line": 467
+    },
+    {
+      "name": "v8_enable_sticky_mark_bits",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Use sticky mark-bits for separating object generations.",
+      "source_file": "BUILD.gn",
+      "line": 470
+    },
+    {
+      "name": "v8_enable_experimental_tsa_builtins",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Use the experimental TSA-based definition for some builtins.",
+      "source_file": "BUILD.gn",
+      "line": 473
+    },
+    {
+      "name": "v8_enable_experimental_tq_to_tsa",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Use the experimental TSA backend for Torque.",
+      "source_file": "BUILD.gn",
+      "line": 476
+    },
+    {
+      "name": "v8_enable_undefined_double",
+      "raw_default": "true",
+      "type": "bool",
+      "comment": "Use the encoding of undefined in double values.",
+      "source_file": "BUILD.gn",
+      "line": 479
+    },
+    {
+      "name": "v8_dcheck_always_on",
+      "raw_default": "dcheck_always_on",
+      "type": "ref",
+      "comment": "",
+      "source_file": "BUILD.gn",
+      "line": 481
+    },
+    {
+      "name": "v8_depend_on_icu_data_file",
+      "raw_default": "icu_use_data_file",
+      "type": "ref",
+      "comment": "Remote builds require an explicit dependency on icudat, but this breaks locally building V8 with ICU support when the file isn't present, which some embedders rely on. This option controls the explicit dependency and allows the build to complete.",
+      "source_file": "BUILD.gn",
+      "line": 487
+    },
+    {
+      "name": "v8_lower_limits_mode",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Experimental testing mode where various limits are artificially set lower.",
+      "source_file": "BUILD.gn",
+      "line": 490
+    },
+    {
+      "name": "v8_enable_partition_alloc",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Enables the use of partition_alloc as the default allocator for standalone V8. This should be used for benchmarking and testing purposes to more closely mimic in-browser behavior.  Currently used in d8.",
+      "source_file": "BUILD.gn",
+      "line": 497
+    },
+    {
+      "name": "use_cppgc_clang_plugin",
+      "raw_default": "true",
+      "type": "bool",
+      "comment": "V8 uses Chrome's blink-gc clang plugin for checking V8's internal cppgc usages. The plugin is not exhaustive but covers most common known pitfalls.",
+      "source_file": "BUILD.gn",
+      "line": 501
+    },
+    {
+      "name": "v8_function_arguments_caller_are_own_props",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Expose F.p.caller and .arguments as own properties.",
+      "source_file": "BUILD.gn",
+      "line": 504
+    },
+    {
+      "name": "v8_use_default_hasher_secret",
+      "raw_default": "true",
+      "type": "bool",
+      "comment": "Use a hard-coded secret value when hashing.",
+      "source_file": "BUILD.gn",
+      "line": 507
+    },
+    {
+      "name": "v8_enable_seeded_array_index_hash",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Enable seeded array index hash.",
+      "source_file": "BUILD.gn",
+      "line": 510
+    },
+    {
+      "name": "v8_dumpling",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "add instrumentation for Dumpling differential fuzzing",
+      "source_file": "BUILD.gn",
+      "line": 513
+    },
+    {
+      "name": "v8_riscv_enable_deprecated_riscv32",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Enable compilation of riscv32.",
+      "source_file": "BUILD.gn",
+      "line": 516
+    },
+    {
+      "name": "v8_logging_level",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Sets the level of logging detail in V8_Fatal. 0: No file and line and message only if args are provided (for official release builds). 1: Message but no file or line. 2: Everything (file, line, message).",
+      "source_file": "BUILD.gn",
+      "line": 523
+    },
+    {
+      "name": "v8_correctness_fuzzer",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Includes files needed for correctness fuzzing.",
+      "source_file": "gni/v8.gni",
+      "line": 23
+    },
+    {
+      "name": "v8_multi_arch_build",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Adds additional compile target for building multiple architectures at once.",
+      "source_file": "gni/v8.gni",
+      "line": 26
+    },
+    {
+      "name": "v8_has_valgrind",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Indicate if valgrind was fetched as a custom deps to make it available on swarming.",
+      "source_file": "gni/v8.gni",
+      "line": 30
+    },
+    {
+      "name": "v8_gcmole",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Indicate if gcmole was fetched as a hook to make it available on swarming.",
+      "source_file": "gni/v8.gni",
+      "line": 33
+    },
+    {
+      "name": "v8_optimized_debug",
+      "raw_default": "true",
+      "type": "bool",
+      "comment": "Turns on compiler optimizations in V8 in Debug build.",
+      "source_file": "gni/v8.gni",
+      "line": 36
+    },
+    {
+      "name": "v8_enable_backtrace",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Support for backtrace_symbols on linux.",
+      "source_file": "gni/v8.gni",
+      "line": 39
+    },
+    {
+      "name": "v8_use_external_startup_data",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Use external files for startup data blobs: the JS builtins sources and the start snapshot.",
+      "source_file": "gni/v8.gni",
+      "line": 43
+    },
+    {
+      "name": "v8_enable_builtins_optimization",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Includes profiles to optimize builtins.",
+      "source_file": "gni/v8.gni",
+      "line": 46
+    },
+    {
+      "name": "v8_enable_debugging_features",
+      "raw_default": "is_debug",
+      "type": "ref",
+      "comment": "Turns on all V8 debug features. Enables running V8 in a pseudo debug mode within a release Chrome. This implies verification features to detect more bugs and additionally includes features that aid developers when debugging.",
+      "source_file": "gni/v8.gni",
+      "line": 51
+    },
+    {
+      "name": "v8_enable_i18n_support",
+      "raw_default": "true",
+      "type": "bool",
+      "comment": "Enable ECMAScript Internationalization API. Enabling this feature will add a dependency on the ICU library.",
+      "source_file": "gni/v8.gni",
+      "line": 55
+    },
+    {
+      "name": "v8_enable_temporal_support",
+      "raw_default": "!(defined(build_with_node) && build_with_node)",
+      "type": "bool_expr",
+      "comment": "Enable Temporal API. Enabling this feature will add a dependency on the temporal_rs library.  We currently only want it enabled on d8 and chromium builds (Functionality is still not accessible unless --harmony-temporal is enabled at runtime)  Furthermore, some architectures don't have Rust toolchains in Chromium",
+      "source_file": "gni/v8.gni",
+      "line": 64
+    },
+    {
+      "name": "v8_static_library",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Use static libraries instead of source_sets.",
+      "source_file": "gni/v8.gni",
+      "line": 67
+    },
+    {
+      "name": "v8_enable_cluster_build",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Enable cluster build. This build mode compiles multiple .cc files in one compilation unit. These are files where the C++ compiler spends most of its time processing the same long list of .h files, which means they can be compiled together in almost the same time that just one of them would have taken.",
+      "source_file": "gni/v8.gni",
+      "line": 74
+    },
+    {
+      "name": "v8_monolithic",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Enable monolithic static library for embedders.",
+      "source_file": "gni/v8.gni",
+      "line": 77
+    },
+    {
+      "name": "v8_expose_public_symbols",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Expose public symbols for native modules of Node.js and Electron. Default is false.",
+      "source_file": "gni/v8.gni",
+      "line": 81
+    },
+    {
+      "name": "v8_expose_symbols",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Deprecated for v8_expose_public_symbols.",
+      "source_file": "gni/v8.gni",
+      "line": 84
+    },
+    {
+      "name": "v8_use_perfetto",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Implement tracing using Perfetto (https://perfetto.dev).",
+      "source_file": "gni/v8.gni",
+      "line": 87
+    },
+    {
+      "name": "v8_use_perfetto_json_export",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Use Perfetto JSON Export.",
+      "source_file": "gni/v8.gni",
+      "line": 90
+    },
+    {
+      "name": "v8_use_perfetto_sdk",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Use Perfetto SDK headers.",
+      "source_file": "gni/v8.gni",
+      "line": 93
+    },
+    {
+      "name": "v8_symbol_level",
+      "raw_default": "symbol_level",
+      "type": "ref",
+      "comment": "Override global symbol level setting for v8.",
+      "source_file": "gni/v8.gni",
+      "line": 96
+    },
+    {
+      "name": "v8_enable_wasm_gdb_remote_debugging",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Enable WebAssembly debugging via GDB-remote protocol.",
+      "source_file": "gni/v8.gni",
+      "line": 99
+    },
+    {
+      "name": "v8_enable_lite_mode",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Lite mode disables a number of performance optimizations to reduce memory at the cost of performance. Sets -DV8_LITE_MODE.",
+      "source_file": "gni/v8.gni",
+      "line": 104
+    },
+    {
+      "name": "v8_enable_drumbrake",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "WebAssembly interpreter (DrumBrake)  build flag.",
+      "source_file": "gni/v8.gni",
+      "line": 107
+    },
+    {
+      "name": "v8_enable_drumbrake_tracing",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Enable Wasm interpreter tracing.",
+      "source_file": "gni/v8.gni",
+      "line": 110
+    },
+    {
+      "name": "v8_use_host_cpu_arm_features",
+      "raw_default": "true",
+      "type": "bool",
+      "comment": "Use host CPU ARM features when compiling ARM/ARM64 snapshots (using mksnapshot). When true, use both CPU features from the target's CPU, and the host's CPU. Since mksnapshot's output runs on the target device, this is not desirable in general to take the CPU features of the host compiler. However, the default is true in order to preserve existing behavior, and ensure all necessary CPU features are available in certain scenarios (where target and host have the same CPU architecture but different CPUs).",
+      "source_file": "gni/v8.gni",
+      "line": 120
+    },
+    {
+      "name": "v8_enable_turbofan",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Enable the Turbofan compiler. Sets -dV8_ENABLE_TURBOFAN.",
+      "source_file": "gni/v8.gni",
+      "line": 149
+    },
+    {
+      "name": "v8_enable_maglev",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Enable the Maglev compiler. Sets -dV8_ENABLE_MAGLEV",
+      "source_file": "gni/v8.gni",
+      "line": 153
+    },
+    {
+      "name": "v8_enable_webassembly",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Include support for WebAssembly. If disabled, the 'WebAssembly' global will not be available, and embedder APIs to generate WebAssembly modules will fail. Also, asm.js will not be translated to WebAssembly and will be executed as standard JavaScript instead. Sets -dV8_ENABLE_WEBASSEMBLY.",
+      "source_file": "gni/v8.gni",
+      "line": 160
+    },
+    {
+      "name": "v8_enable_wasm_simd256_revec",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Enable 256-bit long vector re-vectorization pass in WASM compilation pipeline.",
+      "source_file": "gni/v8.gni",
+      "line": 163
+    },
+    {
+      "name": "v8_enable_runtime_call_stats",
+      "raw_default": "!v8_is_on_release_branch",
+      "type": "bool_expr",
+      "comment": "Enable runtime call stats.",
+      "source_file": "gni/v8.gni",
+      "line": 186
+    },
+    {
+      "name": "v8_fuzzilli",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Add fuzzilli fuzzer support.",
+      "source_file": "gni/v8.gni",
+      "line": 189
+    },
+    {
+      "name": "v8_force_optimize_speed",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Force optimizing with -O3 for increased inlining.",
+      "source_file": "gni/v8.gni",
+      "line": 192
+    },
+    {
+      "name": "v8_enable_fuzztest",
+      "raw_default": "!build_with_v8_embedder && !(defined(build_with_node) && build_with_node) && !(is_win && is_component_build) && is_clang",
+      "type": "bool_expr",
+      "comment": "Enable FuzzTest",
+      "source_file": "gni/v8.gni",
+      "line": 197
+    },
+    {
+      "name": "v8_enable_direct_handle",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Use direct pointers in handles (v8::internal::Handle and v8::Local).",
+      "source_file": "gni/v8.gni",
+      "line": 200
+    },
+    {
+      "name": "v8_enable_local_off_stack_check",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Check for off-stack allocated local handles.",
+      "source_file": "gni/v8.gni",
+      "line": 203
+    },
+    {
+      "name": "v8_enable_google_benchmark",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "",
+      "source_file": "gni/v8.gni",
+      "line": 205
+    },
+    {
+      "name": "cppgc_is_standalone",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "",
+      "source_file": "gni/v8.gni",
+      "line": 207
+    },
+    {
+      "name": "cppgc_enable_api_checks",
+      "raw_default": "is_debug || dcheck_always_on",
+      "type": "bool_expr",
+      "comment": "Enables certain checks on API level functionality.",
+      "source_file": "gni/v8.gni",
+      "line": 210
+    },
+    {
+      "name": "cppgc_enable_slow_api_checks",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Enable slow checks on API level functionality.",
+      "source_file": "gni/v8.gni",
+      "line": 213
+    },
+    {
+      "name": "cppgc_enable_object_names",
+      "raw_default": "is_chrome_for_testing",
+      "type": "ref",
+      "comment": "Enable object names in cppgc for profiling purposes.",
+      "source_file": "gni/v8.gni",
+      "line": 216
+    },
+    {
+      "name": "cppgc_enable_young_generation",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Enable young generation in cppgc.",
+      "source_file": "gni/v8.gni",
+      "line": 219
+    },
+    {
+      "name": "cppgc_enable_slim_write_barrier",
+      "raw_default": "true",
+      "type": "bool",
+      "comment": "Enables a slim write barrier that only performs a single check in the fast path and delegates all further checks to a slow path call. This is fast in a setting with few slow-path checks, i.e., with disabled young generation GC.",
+      "source_file": "gni/v8.gni",
+      "line": 225
+    },
+    {
+      "name": "cppgc_enable_pointer_compression",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Enable pointer compression in cppgc. Note: this is automatically turned on by cppgc_enable_caged_heap on 64-bit platforms. To unconditionally disable pointer compression, set cppgc_enable_caged_heap = false.",
+      "source_file": "gni/v8.gni",
+      "line": 230
+    },
+    {
+      "name": "cppgc_enable_larger_cage",
+      "raw_default": "!is_ios",
+      "type": "bool_expr",
+      "comment": "Enable support for larger cages, up to 16GB. iOS cannot mmap above 8GB, so use the smaller cage.",
+      "source_file": "gni/v8.gni",
+      "line": 234
+    },
+    {
+      "name": "v8_advanced_bigint_algorithms",
+      "raw_default": "!is_android",
+      "type": "bool_expr",
+      "comment": "Enable advanced BigInt algorithms, costing about 10-30 KB binary size depending on platform. Disabled on Android to save binary size.",
+      "source_file": "gni/v8.gni",
+      "line": 238
+    },
+    {
+      "name": "v8_use_libm_trig_functions",
+      "raw_default": "is_clang",
+      "type": "ref",
+      "comment": "TODO: macros for determining endian type are clang specific.",
+      "source_file": "gni/v8.gni",
+      "line": 241
+    },
+    {
+      "name": "v8_icu_path",
+      "raw_default": "\"//third_party/icu\"",
+      "type": "string",
+      "comment": "Location of icu.",
+      "source_file": "gni/v8.gni",
+      "line": 244
+    },
+    {
+      "name": "v8_zlib_path",
+      "raw_default": "\"//third_party/zlib\"",
+      "type": "string",
+      "comment": "Location of zlib.",
+      "source_file": "gni/v8.gni",
+      "line": 247
+    },
+    {
+      "name": "v8_enable_pointer_compression",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Enable pointer compression (sets -dV8_COMPRESS_POINTERS).",
+      "source_file": "gni/v8.gni",
+      "line": 250
+    },
+    {
+      "name": "v8_enable_pointer_compression_shared_cage",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "",
+      "source_file": "gni/v8.gni",
+      "line": 251
+    },
+    {
+      "name": "v8_enable_31bit_smis_on_64bit_arch",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "",
+      "source_file": "gni/v8.gni",
+      "line": 252
+    },
+    {
+      "name": "v8_contiguous_compressed_ro_space_size_mb",
+      "raw_default": "16",
+      "type": "int",
+      "comment": "When `v8_enable_pointer_compression_shared_cage` RO space is placed into a contiguous area at the front of the cage. In case RO allocations fails this size needs to be adjusted.",
+      "source_file": "gni/v8.gni",
+      "line": 257
+    },
+    {
+      "name": "v8_enable_cet_shadow_stack",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Change code emission and runtime features to be CET shadow-stack compliant (incomplete and experimental).",
+      "source_file": "gni/v8.gni",
+      "line": 261
+    },
+    {
+      "name": "v8_enable_cet_ibt",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Emit CET IBT landing pad instructions in JIT generated code (experimental).",
+      "source_file": "gni/v8.gni",
+      "line": 264
+    },
+    {
+      "name": "v8_enable_memory_sealing",
+      "raw_default": "false",
+      "type": "bool",
+      "comment": "Use memory sealing to protect various global memory mappings for CFI (experimental). TODO(sroettger): enable by default once we have bot support for testing.",
+      "source_file": "gni/v8.gni",
+      "line": 269
+    },
+    {
+      "name": "v8_enable_etw_stack_walking",
+      "raw_default": "is_win",
+      "type": "ref",
+      "comment": "Sets -DV8_ENABLE_ETW_STACK_WALKING. Enables ETW Stack Walking",
+      "source_file": "gni/v8.gni",
+      "line": 272
+    },
+    {
+      "name": "v8_target_is_simulator",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Specifies if the target build is a simulator build. By default it is set to true if the host and target do not match and we are not cross-compiling.",
+      "source_file": "gni/v8.gni",
+      "line": 276
+    },
+    {
+      "name": "v8_wasm_random_fuzzers",
+      "raw_default": "\"\"",
+      "type": "string",
+      "comment": "Some fuzzers depend on fuzzing functionality linked into the v8 library. For binary size reasons this functionality is not always available.",
+      "source_file": "gni/v8.gni",
+      "line": 280
+    },
+    {
+      "name": "v8_enable_verification_features",
+      "raw_default": "v8_enable_debugging_features",
+      "type": "ref",
+      "comment": "Enable more (costly) verification features that help to detect bugs.",
+      "source_file": "gni/v8.gni",
+      "line": 285
+    }
+  ]
+}
