@@ -31,12 +31,29 @@ runs:
     - name: Add swap space
       shell: bash
       run: |
-        sudo fallocate -l 8G /swapfile
-        sudo chmod 600 /swapfile
-        sudo mkswap /swapfile
-        sudo swapon /swapfile
+        # Verificar swap existente antes de criar
+        CURRENT_SWAP=$(free -g | awk '/Swap:/{print $2}')
+        echo "Swap atual: ${CURRENT_SWAP}GB"
+
+        if [ "$CURRENT_SWAP" -ge 8 ]; then
+          echo "Swap suficiente (${CURRENT_SWAP}GB >= 8GB). Nada a fazer."
+        else
+          # Criar swap ADICIONAL em path diferente
+          SWAPFILE="/mnt/extra-swap"
+          NEED=$((8 - CURRENT_SWAP))
+          echo "Adicionando ${NEED}GB de swap em ${SWAPFILE}..."
+          sudo fallocate -l ${NEED}G "$SWAPFILE" || {
+            echo "::error::fallocate FALHOU para ${SWAPFILE}!"
+            echo "::error::Swap atual: ${CURRENT_SWAP}GB. Build pode ter OOM no linker."
+            exit 1
+          }
+          sudo chmod 600 "$SWAPFILE"
+          sudo mkswap "$SWAPFILE"
+          sudo swapon "$SWAPFILE"
+          echo "Swap adicional: ${NEED}GB"
+        fi
+
         sudo sysctl vm.swappiness=10
-        echo "Swap configured: 8GB"
         free -h
 
     - name: Check runner resources
