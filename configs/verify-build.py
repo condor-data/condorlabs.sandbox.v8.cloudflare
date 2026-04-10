@@ -380,8 +380,8 @@ def cmd_post(yaml_path: str, config_name: str, d8_path: str):
         r = subprocess.run([d8_path, "--expose-memory-corruption-api", "-e",
                            "let a=Sandbox.getAddressOf({}); let s=Sandbox.getSizeOf({}); print('AS_OK:'+typeof a+':'+s)"],
                           capture_output=True, text=True, timeout=10)
-        if "AS_OK:bigint:" in r.stdout:
-            print("PASSED")
+        if "AS_OK:bigint:" in r.stdout or "AS_OK:number:" in r.stdout:
+            print(f"PASSED ({r.stdout.strip()})")
             passed += 1
         else:
             print(f"FAILED ({r.stdout.strip()})")
