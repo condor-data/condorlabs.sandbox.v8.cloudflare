@@ -85,6 +85,12 @@ implications:
       v8_monolithic gera um unico .a/.lib. Incompativel com component build
       que gera multiplos .so/.dylib.
 
+  - if: {v8_monolithic: true}
+    then: {v8_use_external_startup_data: false}
+    reason: >
+      V8 BUILD.gn tem assert(!v8_use_external_startup_data) quando v8_monolithic.
+      Monolithic embeda o snapshot no binario, nao usa snapshot_blob.bin externo.
+
   - if: {is_debug: false, dcheck_always_on: false}
     then: {v8_enable_verify_heap: false}
     reason: >

@@ -48,6 +48,7 @@ configs:
       is_asan: false
       strip_debug_info: true
       v8_monolithic: true
+      v8_use_external_startup_data: false
     runtime_flags:
     - --sandbox-fuzzing
     - --allow-natives-syntax
@@ -131,6 +132,7 @@ configs:
       is_asan: false
       strip_debug_info: true
       v8_monolithic: true
+      v8_use_external_startup_data: false
     runtime_flags:
     - --sandbox-fuzzing
     - --allow-natives-syntax
