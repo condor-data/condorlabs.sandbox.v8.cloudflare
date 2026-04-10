@@ -110,33 +110,35 @@ runs:
             exit 1
           }
         fi
+
+        # Adicionar ao PATH do step ATUAL e dos seguintes
+        export PATH="$PWD/depot_tools:$PATH"
         echo "$PWD/depot_tools" >> $GITHUB_PATH
 
-        # Bootstrap depot_tools — cria python3_bin_reldir.txt que gn precisa
-        # Usar VPYTHON_BYPASS para evitar vpython3 (que precisa de CIPD)
+        # VPYTHON_BYPASS: evitar vpython3 que precisa de CIPD
         export VPYTHON_BYPASS="manually managed python not supported by chrome operations"
         echo "VPYTHON_BYPASS=manually managed python not supported by chrome operations" >> $GITHUB_ENV
 
-        # Rodar update_depot_tools para inicializar
-        cd depot_tools
-        ./update_depot_tools 2>&1 || {
-          echo "::warning::update_depot_tools falhou. Tentando bootstrap manual..."
-          # Criar python3_bin_reldir.txt manualmente apontando para o sistema
-          PYTHON3_PATH=$(which python3)
-          PYTHON3_DIR=$(dirname "$PYTHON3_PATH")
-          echo "$PYTHON3_DIR" > python3_bin_reldir.txt
-          echo "python3_bin_reldir.txt criado: $(cat python3_bin_reldir.txt)"
-        }
-        cd ..
+        # Forçar python3_bin_reldir.txt para o Python do sistema
+        # O update_depot_tools tenta baixar Python via CIPD e pode falhar
+        # Melhor garantir que aponta para o python3 do runner
+        SYSTEM_PYTHON3=$(which python3)
+        SYSTEM_PYTHON3_DIR=$(dirname "$SYSTEM_PYTHON3")
+        echo "$SYSTEM_PYTHON3_DIR" > depot_tools/python3_bin_reldir.txt
+        echo "python3_bin_reldir.txt -> $SYSTEM_PYTHON3_DIR (sistema)"
 
         # Verificar que gn funciona
-        gn --version || {
-          echo "::error::gn NAO FUNCIONA apos bootstrap!"
-          echo "::error::Conteudo de depot_tools/python3_bin_reldir.txt:"
-          cat depot_tools/python3_bin_reldir.txt 2>&1 || echo "(arquivo nao existe)"
+        depot_tools/gn --version || {
+          echo "::error::!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+          echo "::error::gn NAO FUNCIONA!"
+          echo "::error::python3_bin_reldir.txt: $(cat depot_tools/python3_bin_reldir.txt 2>&1)"
+          echo "::error::which python3: $(which python3 2>&1)"
+          echo "::error::python3 --version: $(python3 --version 2>&1)"
+          echo "::error::ls depot_tools/gn: $(ls -la depot_tools/gn 2>&1)"
+          echo "::error::!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
           exit 1
         }
-        echo "depot_tools OK: gn $(gn --version)"
+        echo "depot_tools OK: gn $(depot_tools/gn --version)"
 
     - name: Cache ccache
       uses: actions/cache@v5
