@@ -19,11 +19,7 @@ on:
         required: true
         default: '["fast"]'
         type: string
-      platforms:
-        description: 'Platforms JSON array (ex: ["x64"] ou ["x64","arm64"])'
-        required: false
-        default: '["x64"]'
-        type: string
+
       build_mode:
         description: "d8-standalone (GN, ~15min) ou workerd-full (Bazel, ~45min)"
         required: true
@@ -81,7 +77,6 @@ jobs:
           import json, os, yaml
 
           configs = json.loads('${{ inputs.configs }}')
-          platforms = json.loads('${{ inputs.platforms }}')
 
           with open('configs/v8-cf.yaml') as f:
               cfg = yaml.safe_load(f)
@@ -92,14 +87,9 @@ jobs:
                   print(f"::error::Config '{c}' NAO EXISTE! Disponiveis: {sorted(available)}")
                   raise SystemExit(1)
 
-          include = []
-          for c in configs:
-              for p in platforms:
-                  runner = "ubuntu-24.04-arm" if p == "arm64" else "ubuntu-latest"
-                  include.append({"config": c, "platform": p, "runner": runner})
-
+          include = [{"config": c} for c in configs]
           matrix = {"include": include}
-          print(f"::notice::Matrix: {len(include)} jobs")
+          print(f"::notice::Matrix: {len(include)} jobs — {configs}")
 
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
               f.write(f"MATRIX={json.dumps(matrix)}\n")
@@ -112,14 +102,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
-    runs-on: ${{ matrix.runner }}
+    runs-on: ubuntu-latest
     timeout-minutes: 180
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: "Phase 1: Pre-validate (${{ matrix.config }}/${{ matrix.platform }})"
+      - name: "Phase 1: Pre-validate (${{ matrix.config }})"
         uses: ./.github/actions/pre-validate
         with:
           yaml_file: configs/v8-cf.yaml
