@@ -11,6 +11,8 @@ required_configs:
 - workerd-full
 - workerd-asan
 - workerd-tsan
+- fuzzilli
+- fuzzilli-asan
 valid_families:
 - sandbox
 - sanitizer

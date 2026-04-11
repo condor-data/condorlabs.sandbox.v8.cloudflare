@@ -356,4 +356,70 @@ configs:
     last_build_version: 14.7.173.16
     last_build_date: '2026-04-10T19:20:29Z'
     d8_binary_size: 60M
+  fuzzilli:
+    description: Fuzzilli REPRL coverage-guided fuzzing (sem sanitizer, max exec/s)
+    family: sandbox
+    gn_args:
+      is_debug: false
+      dcheck_always_on: true
+      symbol_level: 1
+      is_component_build: false
+      v8_monolithic: true
+      v8_use_external_startup_data: false
+      v8_fuzzilli: true
+      v8_enable_memory_corruption_api: false
+      v8_enable_verify_heap: true
+      is_asan: false
+    runtime_flags:
+    - --fuzzilli-coverage-instrumentation
+    - --fuzzilli-reprl
+    - --allow-natives-syntax
+    - --expose-gc
+    - --sandbox-fuzzing
+    - --hole-fuzzing
+    - --jit-fuzzing
+    - --stress-ic
+    - --stress-maglev
+    - --maglev-future
+    - --stress-concurrent-inlining
+    - --deopt-every-n-times=100
+    - --stress-compaction
+    - --stress-flush-code
+    - --gc-interval=100
+    last_build_status: null
+    last_build_version: null
+    last_build_date: null
+    d8_binary_size: null
+  fuzzilli-asan:
+    description: Fuzzilli REPRL + ASAN para crash detection
+    family: sanitizer
+    gn_args:
+      is_debug: false
+      dcheck_always_on: true
+      symbol_level: 1
+      is_component_build: false
+      v8_monolithic: false
+      v8_fuzzilli: true
+      v8_enable_memory_corruption_api: false
+      v8_enable_verify_heap: true
+      is_asan: true
+      v8_enable_backtrace: true
+      v8_enable_object_print: true
+    runtime_flags:
+    - --fuzzilli-coverage-instrumentation
+    - --fuzzilli-reprl
+    - --allow-natives-syntax
+    - --expose-gc
+    - --verify-heap
+    - --verify-write-barriers
+    - --stress-ic
+    - --stress-maglev
+    - --deopt-every-n-times=100
+    - --stress-compaction
+    - --stress-flush-code
+    - --gc-interval=50
+    last_build_status: null
+    last_build_version: null
+    last_build_date: null
+    d8_binary_size: null
 last_build: '2026-04-10T19:05:47Z'
